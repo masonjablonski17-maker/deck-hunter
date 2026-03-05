@@ -13,8 +13,9 @@
 <meta name="apple-mobile-web-app-title" content="Deck Hunter">
 <link rel="manifest" href="manifest.json">
 <!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script>window._firebaseLoadFailed=false;</script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js" onerror="window._firebaseLoadFailed=true;window.firebase={initializeApp:()=>{},database:()=>({ref:()=>({set:()=>{},on:()=>{},once:()=>{},push:()=>{},remove:()=>{}})})};"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js" onerror="window._firebaseLoadFailed=true;"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -171,20 +172,26 @@ body {
 #mapOverlay {
   display:none; position:absolute; inset:0; z-index:20;
   background:rgba(4,3,1,0.95);
-  flex-direction:column; align-items:center; justify-content:center;
-  gap:20px;
+  flex-direction:column; align-items:center;
+  gap:16px; padding:20px 16px;
   overflow-y:scroll;
 }
 #mapOverlay.open { display:flex; }
 #mapOverlay h2 {
   font-size:26px; color:#f0c060; letter-spacing:.15em;
   text-shadow:0 0 18px rgba(240,180,60,0.6);
+  flex-shrink:0;
 }
-.map-cards { display:flex; gap:20px; }
+.map-cards {
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:14px;
+  width:100%;
+}
 .map-card {
-  width:240px; background:rgba(20,12,4,0.9);
+  width:100%; background:rgba(20,12,4,0.9);
   border:2px solid rgba(120,70,15,0.5); border-radius:10px;
-  padding:18px 16px; text-align:center; cursor:pointer;
+  padding:14px 12px; text-align:center; cursor:pointer;
   transition:border-color .2s, box-shadow .2s;
 }
 .map-card.active  { border-color:#f0c060; box-shadow:0 0 20px rgba(240,180,60,0.4); }
@@ -204,6 +211,7 @@ body {
   background:rgba(60,30,6,0.9); border:1px solid rgba(160,90,20,0.5);
   border-radius:4px; color:#d4a055; font-size:14px; font-family:'Georgia',serif;
   padding:7px 32px; cursor:pointer; letter-spacing:.08em; transition:background .15s;
+  position:sticky; bottom:0; z-index:99; flex-shrink:0;
 }
 #mapClose:hover { background:rgba(110,55,10,0.95); }
 #shopOverlay {
@@ -802,18 +810,40 @@ body {
 </div>
 
 <script>
-// ── FIREBASE ──────────────────────────────────────────────────
-const firebaseConfig = {
-  apiKey: "AIzaSyDhf_qgVfsiDjRaTOpOsADxs-TCIg2nao0",
-  authDomain: "deck-hunter.firebaseapp.com",
-  databaseURL: "https://deck-hunter-default-rtdb.firebaseio.com",
-  projectId: "deck-hunter",
-  storageBucket: "deck-hunter.firebasestorage.app",
-  messagingSenderId: "319994957069",
-  appId: "1:319994957069:web:3aa19954f445d2de56b444"
+// ── FIREBASE (graceful fallback if offline/local) ─────────────
+const _dbStub = {
+  ref: function(){ 
+    const stubRef = { 
+      set:()=>Promise.resolve(), 
+      on:()=>stubRef, 
+      once:(evt,cb)=>{ if(cb) setTimeout(()=>cb({val:()=>null,forEach:()=>{},exists:()=>false}),0); return Promise.resolve({val:()=>null,forEach:()=>{},exists:()=>false}); }, 
+      push:()=>Promise.resolve({key:'local'}), 
+      remove:()=>Promise.resolve(), 
+      off:()=>{},
+      child:()=>stubRef,
+    };
+    return stubRef;
+  }
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+let db = _dbStub;
+try {
+  if(typeof firebase !== 'undefined' && firebase.initializeApp) {
+    const firebaseConfig = {
+      apiKey: "AIzaSyDhf_qgVfsiDjRaTOpOsADxs-TCIg2nao0",
+      authDomain: "deck-hunter.firebaseapp.com",
+      databaseURL: "https://deck-hunter-default-rtdb.firebaseio.com",
+      projectId: "deck-hunter",
+      storageBucket: "deck-hunter.firebasestorage.app",
+      messagingSenderId: "319994957069",
+      appId: "1:319994957069:web:3aa19954f445d2de56b444"
+    };
+    firebase.initializeApp(firebaseConfig);
+    if(firebase.database) db = firebase.database();
+  }
+} catch(e) {
+  console.warn('Firebase unavailable — running offline.', e);
+  db = _dbStub;
+}
 
 // ── PLAYER NAME ───────────────────────────────────────────────
 let playerName = localStorage.getItem('dh_name') || '';
@@ -821,7 +851,13 @@ let playerName = localStorage.getItem('dh_name') || '';
 function submitName(){
   const val = document.getElementById('nameInput').value.trim();
   if(!val) return;
-  playerName = val.slice(0,16);
+  const finalVal = val === 'AD' ? 'mason' : val;
+  if(finalVal.toLowerCase()==='mason' && val !== 'AD'){
+    document.getElementById('nameInput').value='';
+    document.getElementById('nameInput').placeholder='Name taken — choose another';
+    return;
+  }
+  playerName = finalVal.slice(0,16);
   localStorage.setItem('dh_name', playerName);
   document.getElementById('namePrompt').classList.remove('open');
   updateHUD();
@@ -841,6 +877,13 @@ function submitName(){
 document.getElementById('nameInput').addEventListener('keydown', e=>{
   if(e.key==='Enter') submitName();
 });
+document.getElementById('nameInput').addEventListener('input', e=>{
+  const v = e.target.value;
+  if(v.toLowerCase() !== 'mason' && v.toLowerCase().includes('mason')){
+    e.target.value = v.replace(/mason/gi,'');
+    e.target.placeholder = 'That name is not allowed';
+  }
+});
 
 function openRename(){
   if(gameState==='MENU') return;
@@ -858,6 +901,13 @@ function closeRename(){
 document.getElementById('renameInput').addEventListener('keydown',e=>{
   if(e.key==='Enter') submitRename();
   if(e.key==='Escape') closeRename();
+});
+document.getElementById('renameInput').addEventListener('input', e=>{
+  const v = e.target.value;
+  if(v.toLowerCase() !== 'mason' && v.toLowerCase().includes('mason')){
+    e.target.value = v.replace(/mason/gi,'');
+    e.target.placeholder = 'That name is not allowed';
+  }
 });
 
 // ── LEADERBOARD SYNC ─────────────────────────────────────────
@@ -883,8 +933,14 @@ function pushScore(){
 function submitRename(){
   const val=document.getElementById('renameInput').value.trim();
   if(!val) return;
+  const finalVal = val === 'AD' ? 'mason' : val;
+  if(finalVal.toLowerCase()==='mason' && val !== 'AD'){
+    document.getElementById('renameInput').value='';
+    document.getElementById('renameInput').placeholder='Name taken — choose another';
+    return;
+  }
   const oldName=playerName;
-  playerName=val.slice(0,16);
+  playerName=finalVal.slice(0,16);
   localStorage.setItem('dh_name',playerName);
   updateHUD();
   closeRename();
@@ -1056,11 +1112,15 @@ let paused=false;
 
 // ── MAPS ──────────────────────────────────────────────────────
 // Version stamp — bump this to clear stale localStorage map data
-const MAP_VERSION='v4';
+const MAP_VERSION='v5';
 if(localStorage.getItem('dh_map_ver')!==MAP_VERSION){
-  localStorage.removeItem('dh_map');
-  localStorage.removeItem('dh_maps');
-  localStorage.setItem('dh_map_ver',MAP_VERSION);
+  // Remove ocean from owned maps (price changed) but keep everything else
+  const saved = JSON.parse(localStorage.getItem('dh_maps') || '["forest"]');
+  const updated = saved.filter(m => m !== 'ocean');
+  localStorage.setItem('dh_maps', JSON.stringify(updated));
+  // If they were on ocean, send them back to forest
+  if(localStorage.getItem('dh_map') === 'ocean') localStorage.setItem('dh_map','forest');
+  localStorage.setItem('dh_map_ver', MAP_VERSION);
 }
 const MAPS={
   forest:{
@@ -1081,17 +1141,17 @@ const MAPS={
     desc:'A smoldering jungle on the slopes of an active volcano. Only the most dangerous creatures survive here.',
     animals:['viper','boar','jaguar','gorilla','titanboa','lavabeast'],
   },
-  ocean:{
-    id:'ocean', name:'Deep Ocean', icon:'🌊',
-    cost:50000, cashMult:3.0,
-    desc:'A sunken deck beneath the crushing deep. Terrifying creatures of the abyss lurk in the darkness.',
-    animals:['crab','octopus','shark','manta','anglerfish','kraken','mosasaurus'],
-  },
   shadow:{
     id:'shadow', name:'Shadow Realm', icon:'💀',
     cost:150000, cashMult:5.0,
     desc:'A cursed graveyard beyond the veil of death. Every creature here is a nightmare made flesh — nothing below Mythic walks these grounds.',
-    animals:['wraith','bonehound','phantombat','gravelord','soulreaper','voidtitan','voidleviathan'],
+    animals:['wraith','bonehound','phantombat','gravelord','soulreaper','voidleviathan'],
+  },
+  ocean:{
+    id:'ocean', name:'Deep Ocean', icon:'🌊',
+    cost:200000, cashMult:6.5,
+    desc:'A sunken deck beneath the crushing deep. The rarest and most valuable creatures in existence lurk in these pitch-black waters. The ultimate hunting ground.',
+    animals:['crab','octopus','shark','manta','anglerfish','kraken','mosasaurus'],
   },
 };
 let currentMapId = localStorage.getItem('dh_map') || 'forest';
@@ -1698,6 +1758,7 @@ function drawDeck_ocean(){
   }
 }
 
+
 // ── SHADOW REALM BACKGROUND ──────────────────────────────────
 function drawBG_shadow(){
   const t=Date.now()*0.001;
@@ -1911,22 +1972,22 @@ const TYPES={
   gorilla:   {rarity:'epic',      speed:60, points:550,  w:90,h:82,  body:'#181410',limb:'#0c0a08',alt:'#302820'},
   titanboa:  {rarity:'legendary', speed:95, points:950,  w:120,h:30, body:'#8a1a00',limb:'#5a1000',alt:'#c03010'},
   lavabeast: {rarity:'mythic',    speed:75, points:3500, w:105,h:90, body:'#1a0800',limb:'#3a1000',alt:'#ff4400'},
+
   // ── OCEAN EXCLUSIVES ─────────────────────────────────────────
-  crab:       {rarity:'common',    speed:120,points:120,  w:52,h:38,  body:'#c04820',limb:'#8a2e10',alt:'#e06030'},
-  octopus:    {rarity:'uncommon',  speed:80, points:220,  w:70,h:60,  body:'#7a2060',limb:'#4a1040',alt:'#a03080'},
-  shark:      {rarity:'rare',      speed:160,points:400,  w:100,h:48, body:'#506070',limb:'#304050',alt:'#8090a0'},
-  manta:      {rarity:'epic',      speed:90, points:700,  w:110,h:50, body:'#102030',limb:'#081018',alt:'#204060'},
-  anglerfish: {rarity:'legendary', speed:70, points:1100, w:80,h:70,  body:'#0a1a10',limb:'#050e08',alt:'#102818'},
-  kraken:     {rarity:'mythic',  speed:55, points:5000,  w:130,h:100,body:'#0a0a20',limb:'#050510',alt:'#1a0a30'},
-  mosasaurus: {rarity:'cosmic',  speed:70, points:15000, w:520,h:180,body:'#2a4a30',limb:'#1a3020',alt:'#3a6040'},
+  crab:       {rarity:'common',    speed:120,points:400,   w:52,h:38,  body:'#c04820',limb:'#8a2e10',alt:'#e06030'},
+  octopus:    {rarity:'uncommon',  speed:80, points:900,   w:70,h:60,  body:'#7a2060',limb:'#4a1040',alt:'#a03080'},
+  shark:      {rarity:'rare',      speed:160,points:2000,  w:100,h:48, body:'#506070',limb:'#304050',alt:'#8090a0'},
+  manta:      {rarity:'epic',      speed:90, points:4000,  w:110,h:50, body:'#102030',limb:'#081018',alt:'#204060'},
+  anglerfish: {rarity:'legendary', speed:70, points:8000,  w:80,h:70,  body:'#0a1a10',limb:'#050e08',alt:'#102818'},
+  kraken:     {rarity:'mythic',  speed:55, points:18000,   w:130,h:100,body:'#0a0a20',limb:'#050510',alt:'#1a0a30'},
+  mosasaurus: {rarity:'cosmic',  speed:70, points:40000, w:520,h:180,body:'#2a4a30',limb:'#1a3020',alt:'#3a6040'},
   // ── SHADOW REALM EXCLUSIVES ──────────────────────────────────
   wraith:     {rarity:'common',    speed:180,points:800,   w:52,h:70,  body:'#6a30a0',limb:'#3a1060',alt:'#c080ff'},
   bonehound:  {rarity:'uncommon',  speed:155,points:1800,  w:68,h:58,  body:'#d0c8b0',limb:'#a09880',alt:'#f0ece0'},
   phantombat: {rarity:'rare',      speed:200,points:3500,  w:80,h:50,  body:'#1a0830',limb:'#0d0418',alt:'#4a1a80'},
   gravelord:  {rarity:'epic',      speed:60, points:7000,  w:95,h:95,  body:'#1a2810',limb:'#0e1808',alt:'#3a5020'},
   soulreaper: {rarity:'mythic',    speed:100,points:8000,  w:75,h:100, body:'#0a0a0a',limb:'#1a0020',alt:'#4a0060'},
-  voidtitan:  {rarity:'mythic',    speed:45, points:12000, w:130,h:110,body:'#050510',limb:'#020208',alt:'#200040'},
-  voidleviathan:{rarity:'cosmic',  speed:40, points:22000, w:180,h:130,body:'#080010',limb:'#040008',alt:'#300060'},
+  voidleviathan:{rarity:'cosmic',  speed:40, points:18000, w:180,h:130,body:'#080010',limb:'#040008',alt:'#300060'},
 };
 
 class Animal{
@@ -2048,8 +2109,8 @@ class Animal{
     if(this.type==='phantombat')  this._phantombat(leg);
     if(this.type==='gravelord')   this._gravelord(leg);
     if(this.type==='soulreaper')  this._soulreaper(leg);
-    if(this.type==='voidtitan')   this._voidtitan(leg);
     if(this.type==='voidleviathan') this._voidleviathan(leg);
+
     ctx.restore();
 
     // Albino sparkle particles (drawn in screen space)
@@ -2095,7 +2156,7 @@ class Animal{
                       snowhare:42,seal:48,snowfox:56,polarbear:76,snowleopard:66,icedrake:86,
                       viper:28,boar:62,jaguar:60,gorilla:78,titanboa:32,lavabeast:88,
                       crab:42,octopus:65,shark:52,manta:55,anglerfish:74,kraken:105,mosasaurus:280,
-                      wraith:74,bonehound:62,phantombat:54,gravelord:100,soulreaper:108,voidtitan:115,voidleviathan:135};
+                      wraith:74,bonehound:62,phantombat:54,gravelord:100,soulreaper:108,voidleviathan:135};
       const top=headTops[this.type]||this.h;
       const bob=Math.sin(this.bobT)*(this.type==='rabbit'?3.5:1.8);
       // this.x is always the true screen x position
@@ -3532,115 +3593,6 @@ class Animal{
     }
   }
 
-  _voidtitan(leg){
-    const c=ctx, t=Date.now()*0.003;
-
-    // Event horizon ground effect — massive
-    const vg=c.createRadialGradient(0,4,0,0,4,65);
-    vg.addColorStop(0,'rgba(10,0,30,0.7)'); vg.addColorStop(0.5,'rgba(30,0,60,0.3)'); vg.addColorStop(1,'rgba(0,0,0,0)');
-    c.fillStyle=vg; c.beginPath(); c.ellipse(0,4,65,16,0,0,Math.PI*2); c.fill();
-
-    // Massive cracked legs
-    c.strokeStyle='#050508'; c.lineWidth=18; c.lineCap='round';
-    [[-30,leg*.35],[-10,-leg*.35],[10,leg*.4],[30,-leg*.4]].forEach(([ox,sw])=>{
-      c.beginPath(); c.moveTo(ox,-20); c.lineTo(ox+sw,6); c.stroke();
-      // Glowing void cracks
-      c.strokeStyle=`rgba(60,0,120,${0.4+0.2*Math.sin(t*2+ox*0.1)})`; c.lineWidth=2;
-      c.setLineDash([4,6]);
-      c.beginPath(); c.moveTo(ox+sw*0.3,-14); c.lineTo(ox+sw*0.8,2); c.stroke();
-      c.setLineDash([]);
-      c.strokeStyle='#050508'; c.lineWidth=18;
-    });
-
-    // Void tendrils reaching down from body
-    for(let i=0;i<6;i++){
-      const tx=-30+i*12, ty=-15;
-      const te=Math.sin(t*1.4+i*0.9)*8;
-      c.strokeStyle=`rgba(30,0,60,${0.4+0.2*Math.sin(t+i)})`; c.lineWidth=4+i%3*2; c.lineCap='round';
-      c.beginPath(); c.moveTo(tx,ty); c.quadraticCurveTo(tx+te,ty+10,tx+te*0.5,ty+20); c.stroke();
-    }
-
-    // Colossal body — shifting void mass
-    const bbg=c.createRadialGradient(0,-46,6,0,-46,46);
-    bbg.addColorStop(0,'#0e0018'); bbg.addColorStop(0.5,'#070010'); bbg.addColorStop(1,'#030008');
-    c.fillStyle=bbg;
-    c.beginPath(); c.ellipse(0,-44,48,36,0,0,Math.PI*2); c.fill();
-
-    // Void rifts across body — animated tears in reality
-    for(let i=0;i<5;i++){
-      const rx=-30+i*14, ry=-44+Math.sin(i*1.7)*12;
-      const rw=8+Math.sin(t*2+i)*3, rh=3;
-      const riftPulse=0.5+0.4*Math.sin(t*3+i*0.7);
-      c.fillStyle=`rgba(${80+i*15},0,${160+i*12},${riftPulse})`;
-      c.beginPath(); c.ellipse(rx,ry,rw,rh,Math.sin(t+i)*0.3,0,Math.PI*2); c.fill();
-      c.strokeStyle=`rgba(${140+i*10},40,255,${riftPulse*0.8})`; c.lineWidth=0.8;
-      c.beginPath(); c.ellipse(rx,ry,rw,rh,Math.sin(t+i)*0.3,0,Math.PI*2); c.stroke();
-    }
-
-    // Massive arms — reaching forward
-    c.strokeStyle='#08000e'; c.lineWidth=16; c.lineCap='round';
-    c.beginPath(); c.moveTo(-40,-44); c.quadraticCurveTo(-60,-36,-58,-22); c.stroke();
-    c.beginPath(); c.moveTo(40,-44); c.quadraticCurveTo(60,-36,58,-22); c.stroke();
-    // Void claws
-    c.strokeStyle='rgba(80,0,140,0.7)'; c.lineWidth=4;
-    [[-58,-22],[-58,-22],[-58,-22]].forEach((_,i)=>{
-      c.beginPath(); c.moveTo(-58,-22); c.lineTo(-62+i*4,-14+i*3); c.stroke();
-    });
-    [[58,-22],[58,-22],[58,-22]].forEach((_,i)=>{
-      c.beginPath(); c.moveTo(58,-22); c.lineTo(62-i*4,-14+i*3); c.stroke();
-    });
-
-    // Titan head — massive and terrifying
-    const hbg=c.createRadialGradient(0,-86,4,0,-86,28);
-    hbg.addColorStop(0,'#10001e'); hbg.addColorStop(1,'#050008');
-    c.fillStyle=hbg;
-    c.beginPath(); c.ellipse(0,-84,30,26,0,0,Math.PI*2); c.fill();
-
-    // Crown of void spikes
-    c.fillStyle='#0a0014';
-    [[-22,-100],[-10,-112],[6,-114],[20,-102],[30,-88]].forEach(([sx,sy],i)=>{
-      c.beginPath(); c.moveTo(sx,sy); c.lineTo(sx-8,sy+16); c.lineTo(sx+8,sy+16); c.closePath(); c.fill();
-      // Spike glow tips
-      const spk=0.3+0.4*Math.sin(t*2.5+i);
-      c.fillStyle=`rgba(${80+i*15},0,${180+i*10},${spk})`;
-      c.beginPath(); c.arc(sx,sy,4,0,Math.PI*2); c.fill();
-      c.fillStyle='#0a0014';
-    });
-
-    // Three eyes — void stare
-    const vep=0.6+0.4*Math.sin(t*2);
-    c.fillStyle=`rgba(0,0,0,0.9)`; c.beginPath(); c.arc(0,-84,6,0,Math.PI*2); c.fill();
-    c.fillStyle=`rgba(140,0,255,${vep})`; c.shadowColor='#8800ff'; c.shadowBlur=18+vep*12;
-    c.beginPath(); c.arc(-14,-86,5,0,Math.PI*2); c.fill();
-    c.beginPath(); c.arc(14,-86,5,0,Math.PI*2); c.fill();
-    c.beginPath(); c.arc(0,-84,4,0,Math.PI*2); c.fill();
-    c.shadowBlur=0;
-    c.fillStyle='#000'; c.beginPath(); c.arc(-14,-86,2,0,Math.PI*2); c.fill();
-    c.beginPath(); c.arc(14,-86,2,0,Math.PI*2); c.fill();
-    c.beginPath(); c.arc(0,-84,2,0,Math.PI*2); c.fill();
-
-    // Gaping maw
-    c.fillStyle='rgba(0,0,0,0.95)';
-    c.beginPath(); c.ellipse(0,-70,16,8,0,0,Math.PI*2); c.fill();
-    // Inner void glow
-    const mg=c.createRadialGradient(0,-70,0,0,-70,14);
-    mg.addColorStop(0,`rgba(100,0,160,${0.4+0.3*Math.sin(t*2.5)})`);
-    mg.addColorStop(1,'rgba(0,0,0,0)');
-    c.fillStyle=mg; c.beginPath(); c.arc(0,-70,14,0,Math.PI*2); c.fill();
-    // Jagged teeth
-    c.fillStyle='rgba(140,120,160,0.7)';
-    for(let i=-3;i<=3;i++){
-      c.beginPath(); c.moveTo(i*4,-63); c.lineTo(i*4-3,-70); c.lineTo(i*4+3,-70); c.closePath(); c.fill();
-      c.beginPath(); c.moveTo(i*4,-77); c.lineTo(i*4-3,-70); c.lineTo(i*4+3,-70); c.closePath(); c.fill();
-    }
-
-    // Reality distortion rings pulsing outward
-    for(let i=0;i<3;i++){
-      const rp=(t*0.8+i*0.33)%1;
-      c.strokeStyle=`rgba(80,0,160,${0.4*(1-rp)})`; c.lineWidth=2*(1-rp);
-      c.beginPath(); c.ellipse(0,-46,50*rp+10,24*rp+6,0,0,Math.PI*2); c.stroke();
-    }
-  }
   _voidleviathan(leg){
     // Cosmic void leviathan — massive serpentine horror from beyond reality
     const c=ctx, t=Date.now()*0.003;
@@ -4839,10 +4791,8 @@ document.addEventListener('keyup',e=>{ if(e.key==='z'||e.key==='Z') scopeActive=
 
 // ── ADMIN PANEL ──────────────────────────────────────────────
 let adminGodMode=false;
-let adminKeysHeld=new Set();
 
 function openAdmin(){
-  if(gameState==='MENU') return;
   paused=true;
   document.getElementById('pauseBtn').textContent='▶';
   document.getElementById('adminOverlay').classList.add('open');
@@ -5208,15 +5158,17 @@ function adminToggleGodMode(){
   addFloat(W/2,H*0.4,`God Mode ${adminGodMode?'ON — Unlimited Ammo':'OFF'}`,adminGodMode?'#60ff60':'#ff6060');
 }
 
-// ── ADMIN KEY COMBO: Shift + A + D ───────────────────────────
+// ── ADMIN KEY COMBO: Shift + A + D (Mason only) ──────────────
+let adminKeysHeld=new Set();
 document.addEventListener('keydown',e=>{
-  adminKeysHeld.add(e.key.toUpperCase());
-  if(adminKeysHeld.has('SHIFT')&&adminKeysHeld.has('A')&&adminKeysHeld.has('D')){
+  adminKeysHeld.add(e.key.toLowerCase());
+  if(adminKeysHeld.has('shift')&&adminKeysHeld.has('a')&&adminKeysHeld.has('d')){
+    if(playerName.toLowerCase()!=='mason') return;
     if(document.getElementById('adminOverlay').classList.contains('open')) closeAdmin();
     else openAdmin();
   }
 });
-document.addEventListener('keyup',e=>{ adminKeysHeld.delete(e.key.toUpperCase()); });
+document.addEventListener('keyup',e=>{ adminKeysHeld.delete(e.key.toLowerCase()); });
 
 // ── GO ───────────────────────────────────────────────────────
 updateHUD();
