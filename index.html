@@ -751,6 +751,8 @@ body {
         <button class="admin-btn" onclick="adminWipeLB()" style="border-color:#ff4040;color:#ff6060">🗑 Wipe Leaderboard</button>
         <button class="admin-btn" onclick="adminSetWave(1)">Reset Wave to 1</button>
         <button class="admin-btn" id="godModeBtn" onclick="adminToggleGodMode()">God Mode: OFF</button>
+        <button class="admin-btn" onclick="adminFillIndex()" style="border-color:#4080a0;color:#60a0c0">📖 Fill My Index</button>
+        <button class="admin-btn" id="adminGunBtn" onclick="adminUnlockGun()" style="border-color:#aa0000;color:#ff4040">☠️ Unlock Admin Gun</button>
       </div>
     </div>
 
@@ -1079,12 +1081,14 @@ function currentMap(){ return MAPS[currentMapId]; }
 
 // ── GUNS ─────────────────────────────────────────────────────
 const GUNS=[
-  { id:'hunting_rifle',  name:'Hunting Rifle',   desc:'Your trusty starter rifle. Reliable but slow.',       dmg:1, cost:0,    icon:'🔫', ammoType:'rifle_ammo',    ammoName:'Rifle Rounds'    },
-  { id:'heavy_rifle',    name:'Heavy Rifle',      desc:'Hits harder. Two shots feel like three.',             dmg:2, cost:500,  icon:'🎯', ammoType:'heavy_ammo',    ammoName:'Heavy Rounds'    },
-  { id:'magnum',         name:'.44 Magnum',       desc:'Big bore, big damage. Epic animals fear this.',       dmg:3, cost:1500, icon:'💥', ammoType:'magnum_ammo',   ammoName:'Magnum Rounds'   },
-  { id:'elephant_gun',   name:'Elephant Gun',     desc:'Built for the biggest game. Massive stopping power.', dmg:5, cost:4000, icon:'🐘', ammoType:'elephant_ammo', ammoName:'Elephant Rounds' },
-  { id:'anti_material',  name:'Anti-Material',    desc:'Military grade. Even dragons feel this one.',         dmg:9, cost:10000,icon:'⚡', ammoType:'anti_ammo',     ammoName:'Anti-Mat Rounds' },
-  { id:'golden_cannon',  name:'Golden Cannon',    desc:'Legendary weapon. One shot, one kill on most prey.',  dmg:20,cost:30000,icon:'🏆', ammoType:'cannon_ammo',   ammoName:'Cannon Shells'   },
+  { id:'hunting_rifle',  name:'Hunting Rifle',   desc:'Your trusty starter rifle. Reliable but slow.',       dmg:1,  cost:0,    icon:'🔫', ammoType:'rifle_ammo',    ammoName:'Rifle Rounds'    },
+  { id:'heavy_rifle',    name:'Heavy Rifle',      desc:'Hits harder. Two shots feel like three.',             dmg:2,  cost:500,  icon:'🎯', ammoType:'heavy_ammo',    ammoName:'Heavy Rounds'    },
+  { id:'magnum',         name:'.44 Magnum',       desc:'Big bore, big damage. Epic animals fear this.',       dmg:3,  cost:1500, icon:'💥', ammoType:'magnum_ammo',   ammoName:'Magnum Rounds'   },
+  { id:'elephant_gun',   name:'Elephant Gun',     desc:'Built for the biggest game. Massive stopping power.', dmg:5,  cost:4000, icon:'🐘', ammoType:'elephant_ammo', ammoName:'Elephant Rounds' },
+  { id:'anti_material',  name:'Anti-Material',    desc:'Military grade. Even dragons feel this one.',         dmg:9,  cost:10000,icon:'⚡', ammoType:'anti_ammo',     ammoName:'Anti-Mat Rounds' },
+  { id:'golden_cannon',  name:'Golden Cannon',    desc:'Legendary weapon. One shot, one kill on most prey.',  dmg:20, cost:30000,icon:'🏆', ammoType:'cannon_ammo',   ammoName:'Cannon Shells'   },
+  { id:'void_rifle',     name:'Void Rifle',        desc:'Forged from the darkness between stars. Tears through even cosmic creatures.',  dmg:45, cost:75000,icon:'🌌', ammoType:'void_ammo', ammoName:'Void Rounds' },
+  { id:'admin_gun',      name:'Admin Obliterator',desc:'⚠ ADMIN ONLY. Infinite ammo. Obliterates anything in one shot.', dmg:9999, cost:0, icon:'☠️', ammoType:'rifle_ammo', ammoName:'Rifle Rounds', adminOnly:true },
 ];
 const AMMO_PACKS=[
   { type:'rifle_ammo',    name:'Rifle Rounds',     icon:'🔫', packSize:25, cost:50,   desc:'Standard rounds for the Hunting Rifle.' },
@@ -1093,13 +1097,14 @@ const AMMO_PACKS=[
   { type:'elephant_ammo', name:'Elephant Rounds',  icon:'🐘', packSize:12, cost:380,  desc:'Massive rounds for the Elephant Gun.' },
   { type:'anti_ammo',     name:'Anti-Mat Rounds',  icon:'⚡', packSize:10, cost:700,  desc:'Military-grade rounds for the Anti-Material.' },
   { type:'cannon_ammo',   name:'Cannon Shells',    icon:'🏆', packSize:8,  cost:1500, desc:'Gold-tipped shells for the Golden Cannon.' },
+  { type:'void_ammo',     name:'Void Rounds',      icon:'🌌', packSize:5,  cost:8000, desc:'Crystallised dark matter. Extremely rare and expensive.' },
 ];
 let currentGunId = localStorage.getItem('dh_gun') || 'hunting_rifle';
 let ownedGuns    = JSON.parse(localStorage.getItem('dh_owned') || '["hunting_rifle"]');
 
 function currentGun(){ return GUNS.find(g=>g.id===currentGunId); }
 // ── AMMO ─────────────────────────────────────────────────────
-const DEFAULT_AMMO={ rifle_ammo:50, heavy_ammo:0, magnum_ammo:0, elephant_ammo:0, anti_ammo:0, cannon_ammo:0 };
+const DEFAULT_AMMO={ rifle_ammo:50, heavy_ammo:0, magnum_ammo:0, elephant_ammo:0, anti_ammo:0, cannon_ammo:0, void_ammo:0 };
 let ammo=JSON.parse(localStorage.getItem('dh_ammo')||JSON.stringify(DEFAULT_AMMO));
 // Fill in any missing keys (for existing saves)
 for(const k of Object.keys(DEFAULT_AMMO)){ if(ammo[k]===undefined) ammo[k]=0; }
@@ -4092,12 +4097,13 @@ function fire(){
   if(gameState!=='PLAYING')return;
   // Check ammo
   const gun=currentGun();
-  if(ammo[gun.ammoType]<=0 && !adminGodMode){
+  const infiniteAmmo = adminGodMode || gun.adminOnly;
+  if(ammo[gun.ammoType]<=0 && !infiniteAmmo){
     sndMiss();
     addFloat(W/2,H*0.45,'OUT OF AMMO! Buy more in the Shop.','#ff4040');
     return;
   }
-  if(!adminGodMode){ ammo[gun.ammoType]--; saveAmmo(); }
+  if(!infiniteAmmo){ ammo[gun.ammoType]--; saveAmmo(); }
   initAudio(); sndShot();
   muzzleFlash=1; shakeTime=0.18;
 
@@ -4525,23 +4531,42 @@ function renderGunsTab(grid){
     const owned=ownedGuns.includes(gun.id);
     const equipped=currentGunId===gun.id;
     const canAfford=score>=gun.cost;
+    // Admin gun only shows if owned
+    if(gun.adminOnly && !owned) return;
     const card=document.createElement('div');
-    card.className='shop-card'+(equipped?' owned':!canAfford&&!owned?' locked':'');
-    card.innerHTML=`
-      <div style="font-size:28px;margin-bottom:6px">${gun.icon}</div>
-      <h3>${gun.name}</h3>
-      <div class="desc">${gun.desc}</div>
-      <div class="stat">⚔ Damage: ${gun.dmg} per shot${gun.dmg>1?` (headshot: ${gun.dmg*2})`:`(headshot: 2)`}</div>
-      <div class="stat" style="color:#a08050">🔴 Uses: ${gun.ammoName}</div>
-      ${equipped
-        ? `<div class="owned-badge">✓ EQUIPPED</div>`
-        : owned
-          ? `<button onclick="equipGun('${gun.id}')">Equip</button>`
-          : `<button onclick="buyGun('${gun.id}')" ${canAfford?'':'disabled'}>
-               Buy — $${gun.cost.toLocaleString()}
-             </button>`
-      }
-    `;
+    if(gun.adminOnly){
+      card.className='shop-card'+(equipped?' owned':'');
+      card.style.cssText='border-color:#aa0000;background:rgba(30,0,0,0.9)';
+      card.innerHTML=`
+        <div style="font-size:34px;margin-bottom:6px">${gun.icon}</div>
+        <h3 style="color:#ff4040">${gun.name}</h3>
+        <div class="desc" style="color:#cc6060">${gun.desc}</div>
+        <div class="stat" style="color:#ff6060">⚔ Damage: ∞ (one-shots everything)</div>
+        <div class="stat" style="color:#ff8040">♾ Ammo: Infinite — never runs out</div>
+        <div class="stat" style="color:#cc3030">🔴 ADMIN EXCLUSIVE</div>
+        ${equipped
+          ? `<div class="owned-badge" style="color:#ff4040">✓ EQUIPPED</div>`
+          : `<button onclick="equipGun('${gun.id}')" style="border-color:#aa0000;color:#ff4040">Equip</button>`
+        }
+      `;
+    } else {
+      card.className='shop-card'+(equipped?' owned':!canAfford&&!owned?' locked':'');
+      card.innerHTML=`
+        <div style="font-size:28px;margin-bottom:6px">${gun.icon}</div>
+        <h3>${gun.name}</h3>
+        <div class="desc">${gun.desc}</div>
+        <div class="stat">⚔ Damage: ${gun.dmg} per shot${gun.dmg>1?` (headshot: ${gun.dmg*2})`:`(headshot: 2)`}</div>
+        <div class="stat" style="color:#a08050">🔴 Uses: ${gun.ammoName}</div>
+        ${equipped
+          ? `<div class="owned-badge">✓ EQUIPPED</div>`
+          : owned
+            ? `<button onclick="equipGun('${gun.id}')">Equip</button>`
+            : `<button onclick="buyGun('${gun.id}')" ${canAfford?'':'disabled'}>
+                 Buy — $${gun.cost.toLocaleString()}
+               </button>`
+        }
+      `;
+    }
     grid.appendChild(card);
   });
 }
@@ -5097,6 +5122,31 @@ function adminFillAmmo(){
   for(const k of Object.keys(ammo)) ammo[k]=999;
   saveAmmo(); updateHUD();
   addFloat(W/2,H*0.4,'All Ammo Filled!','#60ff60');
+}
+function adminFillIndex(){
+  Object.keys(TYPES).forEach(type=>{
+    const cfg=TYPES[type];
+    if(!killIndex[type]) killIndex[type]={kills:0,totalCash:0,bestCash:0};
+    killIndex[type].kills = Math.max(killIndex[type].kills, 1);
+    const pts=cfg.points;
+    killIndex[type].totalCash = Math.max(killIndex[type].totalCash, pts);
+    killIndex[type].bestCash  = Math.max(killIndex[type].bestCash,  pts);
+  });
+  saveKillIndex();
+  addFloat(W/2,H*0.38,'📖 Index Filled!','#60a0c0');
+}
+function adminUnlockGun(){
+  if(!ownedGuns.includes('admin_gun')){
+    ownedGuns.push('admin_gun');
+    localStorage.setItem('dh_owned', JSON.stringify(ownedGuns));
+    addFloat(W/2,H*0.38,'☠️ Admin Obliterator Unlocked!','#ff4040');
+  }
+  currentGunId='admin_gun';
+  localStorage.setItem('dh_gun','admin_gun');
+  updateHUD();
+  const btn=document.getElementById('adminGunBtn');
+  if(btn){ btn.textContent='☠️ Admin Gun: EQUIPPED'; btn.style.color='#ff8040'; btn.style.borderColor='#cc4400'; }
+  if(document.getElementById('shopOverlay').classList.contains('open')) renderShop();
 }
 function adminWipeLB(){
   if(!confirm('Wipe the ENTIRE leaderboard? This cannot be undone.')) return;
