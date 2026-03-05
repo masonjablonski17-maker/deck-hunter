@@ -495,6 +495,12 @@ body {
   box-shadow:0 0 30px rgba(180,0,255,0.6);
   animation:luckPulse4 1.2s infinite;
 }
+#luckIndicator.x8 {
+  border-color:rgba(255,30,30,0.95);
+  background:rgba(20,0,0,0.98);
+  box-shadow:0 0 40px rgba(255,0,0,0.8);
+  animation:luckPulse8 0.8s infinite;
+}
 #luckIndicator .li-icon { font-size:22px; line-height:1.1; }
 #luckIndicator .li-text {
   font-size:14px; font-weight:bold; color:#ffd700;
@@ -505,11 +511,23 @@ body {
   color:#df80ff;
   text-shadow:0 0 14px rgba(200,0,255,0.9);
 }
+#luckIndicator.x8 .li-text {
+  color:#ff4040;
+  text-shadow:0 0 18px rgba(255,0,0,1);
+}
 #luckIndicator .li-sub {
   font-size:10px; color:#a08030; font-family:'Georgia',serif;
   letter-spacing:.08em; margin-top:2px;
 }
 #luckIndicator.x4 .li-sub { color:#9040c0; }
+#luckIndicator.x8 .li-sub { color:#ff6060; }
+@keyframes luckPulse8 {
+  0%  { box-shadow:0 0 20px rgba(255,0,0,0.6);   transform:scale(1);    border-color:rgba(255,30,30,0.9); }
+  25% { box-shadow:0 0 55px rgba(255,100,0,1);   transform:scale(1.07); border-color:rgba(255,140,0,1);   }
+  50% { box-shadow:0 0 20px rgba(255,0,80,0.6);  transform:scale(1);    border-color:rgba(255,0,60,0.9);  }
+  75% { box-shadow:0 0 55px rgba(255,0,0,1);     transform:scale(1.07); border-color:rgba(255,30,30,1);   }
+  100%{ box-shadow:0 0 20px rgba(255,0,0,0.6);   transform:scale(1);    border-color:rgba(255,30,30,0.9); }
+}
 @keyframes luckPulse2 {
   0%,100%{ box-shadow:0 0 10px rgba(255,200,40,0.3); }
   50%    { box-shadow:0 0 28px rgba(255,200,40,0.8); }
@@ -774,6 +792,7 @@ body {
       <div class="admin-row" style="margin-top:6px;gap:8px">
         <button class="admin-btn" id="luckBtn"  onclick="adminActivateLuck(2)" style="border-color:#a08030;color:#c0a040">🍀 ACTIVATE 2× LUCK</button>
         <button class="admin-btn" id="luck4Btn" onclick="adminActivateLuck(4)" style="border-color:#800080;color:#cc44ff">💎 ACTIVATE 4× LUCK</button>
+        <button class="admin-btn" id="luck8Btn" onclick="adminActivateLuck(8)" style="border-color:#aa0000;color:#ff4040">🔥 ACTIVATE 8× LUCK</button>
         <button class="admin-btn" onclick="adminStopLuck()" style="border-color:#604020;color:#a06030">✕ STOP LUCK</button>
       </div>
       <div id="luckAdminStatus" style="color:#706030;font-size:11px;font-family:Georgia,serif;margin-top:5px"></div>
@@ -1929,13 +1948,13 @@ class Animal{
     this.maxHp=RARITIES[this.rarity].hp;
     this.hp=this.maxHp;
     // 1% chance of albino — pure white, 3× cash, shimmer glow
-    this.albino=Math.random()<(globalLuckLevel===4?0.06:globalLuckLevel===2?0.02:0.01);
+    this.albino=Math.random()<(globalLuckLevel===8?0.12:globalLuckLevel===4?0.06:globalLuckLevel===2?0.02:0.01);
     if(this.albino){
       this.body='#f5f5f8'; this.limb='#d8d8e0'; this.alt='#ececf2';
       this.points=Math.round(this.points*3);
     }
     // 0.5% chance of melanistic — jet black, 5× cash, dark shimmer (cannot stack with albino)
-    this.melanistic=!this.albino && Math.random()<(globalLuckLevel===4?0.03:globalLuckLevel===2?0.01:0.005);
+    this.melanistic=!this.albino && Math.random()<(globalLuckLevel===8?0.08:globalLuckLevel===4?0.03:globalLuckLevel===2?0.01:0.005);
     if(this.melanistic){
       this.body='#0e0e0e'; this.limb='#1a1a1a'; this.alt='#252525';
       this.points=Math.round(this.points*5);
@@ -4061,14 +4080,21 @@ function spawnAnimal(){
     // Luck boost: increase weight of rare+ animals
     if(globalLuckLevel>0){
       const rarIdx=['common','uncommon','rare','epic','legendary','mythic','cosmic'].indexOf(cfg.rarity);
-      if(globalLuckLevel===4){
-        // 4×: epic+ get massive boost, rare gets 2×, common/uncommon cut in half
-        if(rarIdx>=4)      w=w*8;   // legendary/mythic/cosmic — huge surge
-        else if(rarIdx===3) w=w*5;  // epic — very common
-        else if(rarIdx===2) w=w*2;  // rare — boosted
-        else                w=Math.max(1,Math.round(w*0.4)); // common/uncommon — suppressed
+      if(globalLuckLevel===8){
+        // 8×: cosmic/mythic go absolutely wild, legendary x12, epic x6, rare x3, commons nearly gone
+        if(rarIdx===6)      w=w*20;  // cosmic — floods in
+        else if(rarIdx===5) w=w*15;  // mythic — very common
+        else if(rarIdx===4) w=w*12;  // legendary
+        else if(rarIdx===3) w=w*6;   // epic
+        else if(rarIdx===2) w=w*3;   // rare
+        else                w=Math.max(1,Math.round(w*0.15)); // common/uncommon — nearly extinct
+      } else if(globalLuckLevel===4){
+        if(rarIdx>=4)       w=w*8;
+        else if(rarIdx===3) w=w*5;
+        else if(rarIdx===2) w=w*2;
+        else                w=Math.max(1,Math.round(w*0.4));
       } else {
-        // 2×: rare+ doubled, common/uncommon unchanged
+        // 2×: rare+ doubled
         if(rarIdx>=2) w=w*2;
       }
     }
@@ -4890,7 +4916,10 @@ setTimeout(()=>setLuckDur(60),200);
 function adminActivateLuck(level){
   const expiresAt = Date.now() + _luckDurSecs*1000;
   db.ref('globalLuck').set({ level, expiresAt });
-  if(level===4){
+  if(level===8){
+    addFloat(W/2,H*0.28,`🔥 8× LUCK — ${fmtDur(_luckDurSecs)}!`,'#ff4040');
+    addFloat(W/2,H*0.36,'COSMIC INVASION!','#ff8040');
+  } else if(level===4){
     addFloat(W/2,H*0.32,`💎 4× LUCK — ${fmtDur(_luckDurSecs)}!`,'#df80ff');
     addFloat(W/2,H*0.40,'EPIC+ ANIMALS FLOODING IN!','#cc44ff');
   } else {
@@ -4958,15 +4987,17 @@ function _applyLuckUI(){
   const st   = document.getElementById('luckAdminStatus');
   if(ind){
     ind.style.display = globalLuckActive ? 'block' : 'none';
+    ind.classList.toggle('x8', globalLuckLevel===8);
     ind.classList.toggle('x4', globalLuckLevel===4);
-    if(icon) icon.textContent = globalLuckLevel===4 ? '💎' : '🍀';
-    if(txt)  txt.textContent  = globalLuckLevel===4 ? '4× LUCK' : globalLuckActive ? '2× LUCK' : '';
-    if(sub)  sub.textContent  = globalLuckLevel===4 ? 'EPIC+ GUARANTEED!' : 'RARE+ BOOSTED';
+    if(icon) icon.textContent = globalLuckLevel===8 ? '🔥' : globalLuckLevel===4 ? '💎' : '🍀';
+    if(txt)  txt.textContent  = globalLuckLevel===8 ? '8× LUCK' : globalLuckLevel===4 ? '4× LUCK' : globalLuckActive ? '2× LUCK' : '';
+    if(sub)  sub.textContent  = globalLuckLevel===8 ? 'COSMIC INVASION!' : globalLuckLevel===4 ? 'EPIC+ GUARANTEED!' : 'RARE+ BOOSTED';
   }
   if(st) st.textContent = globalLuckActive ? `Active: ${globalLuckLevel}× luck` : 'Inactive';
   // Sync admin buttons
   const btn2=document.getElementById('luckBtn');
   const btn4=document.getElementById('luck4Btn');
+  const btn8=document.getElementById('luck8Btn');
   if(btn2){
     const on=globalLuckLevel===2;
     btn2.style.borderColor=on?'rgba(255,200,40,0.9)':'rgba(160,128,48,0.6)';
@@ -4977,6 +5008,12 @@ function _applyLuckUI(){
     btn4.style.borderColor=on?'rgba(200,0,255,0.9)':'rgba(128,0,128,0.6)';
     btn4.style.color=on?'#df80ff':'#cc44ff';
     btn4.style.textShadow=on?'0 0 12px rgba(200,0,255,0.8)':'';
+  }
+  if(btn8){
+    const on=globalLuckLevel===8;
+    btn8.style.borderColor=on?'rgba(255,60,0,1)':'rgba(170,0,0,0.6)';
+    btn8.style.color=on?'#ff6020':'#ff4040';
+    btn8.style.textShadow=on?'0 0 14px rgba(255,60,0,0.9)':'';
   }
 }
 db.ref('globalMsg').once('value', snap=>{ snap.forEach(child=>child.ref.remove()); });
