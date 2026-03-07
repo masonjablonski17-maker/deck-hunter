@@ -269,6 +269,28 @@ body {
 }
 .shop-tab:hover { background:rgba(80,40,8,0.9); color:#d4a055; }
 .active-tab { background:rgba(80,40,8,0.95)!important; border-color:rgba(200,120,30,0.7)!important; color:#f0c060!important; }
+/* ── SKIN CARDS ── */
+.skin-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; width:100%; }
+.skin-card {
+  background:rgba(16,10,4,0.95); border:1px solid rgba(100,60,10,0.5);
+  border-radius:8px; padding:10px 10px 12px; text-align:center; cursor:pointer;
+  transition:border-color .2s, box-shadow .2s;
+}
+.skin-card.equipped { border-color:#f0c060; box-shadow:0 0 14px rgba(240,180,60,0.4); }
+.skin-card.locked   { opacity:.5; }
+.skin-preview {
+  width:100%; height:52px; border-radius:6px; margin-bottom:8px;
+  position:relative; overflow:hidden;
+}
+.skin-name  { color:#e0c070; font-size:12px; font-weight:bold; margin-bottom:2px; font-family:'Georgia',serif; }
+.skin-rarity{ font-size:10px; margin-bottom:6px; font-family:'Georgia',serif; }
+.skin-card button {
+  background:rgba(60,30,6,0.9); border:1px solid rgba(160,90,20,0.6);
+  border-radius:4px; color:#d4a055; font-size:11px; font-family:'Georgia',serif;
+  padding:4px 12px; cursor:pointer; transition:background .15s; width:100%;
+}
+.skin-card button:hover:not(:disabled){ background:rgba(120,60,10,0.95); }
+.skin-card button:disabled { opacity:.4; cursor:default; }
 /* ── ADMIN PANEL ── */
 #adminOverlay {
   display:none; position:absolute; inset:0; z-index:50;
@@ -700,9 +722,11 @@ body {
     <div id="shopTabs" style="display:flex;gap:8px;margin-bottom:14px">
       <button id="tabGuns"  onclick="setShopTab('guns')"  class="shop-tab active-tab">🔫 GUNS</button>
       <button id="tabAmmo"  onclick="setShopTab('ammo')"  class="shop-tab">🔴 AMMO</button>
+      <button id="tabSkins" onclick="setShopTab('skins')" class="shop-tab">✨ SKINS</button>
     </div>
     <div id="shopGrid"></div>
   </div>
+
   <div id="waveBar" style="display:none">
     <div id="waveBarLabel">Next: 10s</div>
     <div id="waveBarTrack"><div id="waveBarFill"></div></div>
@@ -3881,10 +3905,12 @@ function drawVignette(){
 function drawMuzzle(){
   if(muzzleFlash<=0)return;
   const fx=W/2,fy=H-55,a=muzzleFlash;
+  const skin=currentSkin();
+  const flashCol=skin.rarity==='common'||skin.rarity==='uncommon'?'#ff8010':skin.colors[1];
   ctx.save(); ctx.globalAlpha=a;
   const g=ctx.createRadialGradient(fx,fy,0,fx,fy,65);
-  g.addColorStop(0,'#ffffff'); g.addColorStop(.14,'#ffe060');
-  g.addColorStop(.4,'#ff8010'); g.addColorStop(1,'rgba(255,80,0,0)');
+  g.addColorStop(0,'#ffffff'); g.addColorStop(.14,flashCol);
+  g.addColorStop(.4,skin.colors[0]); g.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=g; ctx.beginPath(); ctx.arc(fx,fy,65,0,Math.PI*2); ctx.fill();
   ctx.strokeStyle=`rgba(255,200,50,${a*.55})`; ctx.lineWidth=2;
   for(let i=0;i<8;i++){
@@ -4093,7 +4119,8 @@ function fire(){
     if(a.dying)continue;
     const hb=a.hitbox();
     if(ax>=hb.x&&ax<=hb.x+hb.w&&ay>=hb.y&&ay<=hb.y+hb.h){
-      const hs=ay<hb.y+hb.h*.25;
+      const hsThreshold = a.type==='mosasaurus' ? 0.45 : 0.25;
+      const hs=ay<hb.y+hb.h*hsThreshold;
       const gunDmg=currentGun().dmg;
       const dmg=hs?gunDmg*2:gunDmg;
       a.hp=Math.max(0,a.hp-dmg);
@@ -4195,6 +4222,7 @@ function setShopTab(tab){
   shopTab=tab;
   document.getElementById('tabGuns').className='shop-tab'+(tab==='guns'?' active-tab':'');
   document.getElementById('tabAmmo').className='shop-tab'+(tab==='ammo'?' active-tab':'');
+  document.getElementById('tabSkins').className='shop-tab'+(tab==='skins'?' active-tab':'');
   renderShop();
 }
 // ── INDEX ────────────────────────────────────────────────────
@@ -4501,7 +4529,9 @@ function renderShop(){
   document.getElementById('shopCash').textContent=`Your Cash: $${score.toLocaleString()}`;
   const grid=document.getElementById('shopGrid');
   grid.innerHTML='';
+  grid.className='';
   if(shopTab==='guns') renderGunsTab(grid);
+  else if(shopTab==='skins') renderSkinsTab(grid);
   else renderAmmoTab(grid);
 }
 function renderGunsTab(grid){
@@ -4691,6 +4721,7 @@ function loop(ts){
   tickFloats(dt);
   drawMuzzle();
   if(muzzleFlash>0) muzzleFlash-=dt*7;
+  drawGun();
   drawVignette();
 
   // Always show rarity chart (except menu)
@@ -5170,9 +5201,435 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keyup',e=>{ adminKeysHeld.delete(e.key.toLowerCase()); });
 
+
+// ── GUN SKINS ────────────────────────────────────────────────
+const GUN_SKINS = [
+  // ── COMMON ──
+  { id:'default',    name:'Default',        rarity:'common',    cost:0,        colors:['#5a3a1a','#3a2010','#8a6030'],          label:'Worn wood finish. Classic.' },
+  { id:'army_camo',  name:'Army Camo',      rarity:'common',    cost:2000,     colors:['#4a5a30','#6a7a40','#3a4820'],          label:'Standard military camo.' },
+  { id:'midnight',   name:'Midnight',       rarity:'common',    cost:3500,     colors:['#1a1a2a','#252535','#0a0a18'],          label:'All-black stealth finish.' },
+  { id:'crimson',    name:'Crimson',        rarity:'uncommon',  cost:8000,     colors:['#8a1010','#c02020','#601010'],          label:'Deep blood-red finish.' },
+  { id:'ocean_blue', name:'Ocean Blue',     rarity:'uncommon',  cost:10000,    colors:['#103858','#1a5878','#0a2840'],          label:'Deep sea blue.' },
+  { id:'hunter_grn', name:'Hunter Green',   rarity:'uncommon',  cost:12000,    colors:['#1a4820','#2a6830','#0e3018'],          label:'Classic hunting green.' },
+  // ── RARE ──
+  { id:'gold_plated',name:'Gold Plated',    rarity:'rare',      cost:35000,    colors:['#c8a020','#f0c840','#a07810'],          label:'Solid gold plating. Show it off.' },
+  { id:'arctic',     name:'Arctic Camo',    rarity:'rare',      cost:40000,    colors:['#c8d8e8','#e0eaf4','#a0b8cc'],          label:'Snow camo for cold hunts.' },
+  { id:'tiger_strp', name:'Tiger Stripe',   rarity:'rare',      cost:50000,    colors:['#c86010','#1a1a1a','#e88030'],          label:'Bold tiger stripe pattern.' },
+  { id:'chrome',     name:'Chrome',         rarity:'rare',      cost:60000,    colors:['#c0c8d0','#e8f0f8','#889098'],          label:'Mirror-polished chrome.' },
+  // ── EPIC ──
+  { id:'amethyst',   name:'Amethyst',       rarity:'epic',      cost:150000,   colors:['#6020a0','#9040e0','#401060'],          label:'Deep purple crystal finish.' },
+  { id:'lava',       name:'Lava',           rarity:'epic',      cost:180000,   colors:['#c03000','#ff6820','#801800'],          label:'Glowing lava cracks.' },
+  { id:'deep_sea',   name:'Deep Sea',       rarity:'epic',      cost:200000,   colors:['#002840','#004868','#001828'],          label:'Abyssal black-blue shimmer.' },
+  { id:'venom',      name:'Venom',          rarity:'epic',      cost:220000,   colors:['#204010','#60c020','#102008'],          label:'Toxic green drip pattern.' },
+  // ── LEGENDARY ──
+  { id:'galaxy',     name:'Galaxy',         rarity:'legendary', cost:500000,   colors:['#0a0820','#3010a0','#8020c0'],          label:'Swirling galaxy. Glows in the dark.' },
+  { id:'inferno',    name:'Inferno',        rarity:'legendary', cost:600000,   colors:['#c00000','#ff4000','#ff9000'],          label:'Pure fire. Everyone will see this.' },
+  { id:'void',       name:'Void',           rarity:'legendary', cost:700000,   colors:['#050508','#1a0030','#300060'],          label:'Swallows light itself.' },
+  // ── MYTHIC ──
+  { id:'aurora',     name:'Aurora',         rarity:'mythic',    cost:2000000,  colors:['#00c880','#0040ff','#c000ff'],          label:'Northern lights across the barrel.' },
+  { id:'diamond',    name:'Diamond',        rarity:'mythic',    cost:3000000,  colors:['#a8e8ff','#ffffff','#60c8ff'],          label:'Pure diamond. Blindingly rare.' },
+  // ── COSMIC (ULTRA RARE) ──
+  { id:'cosmic_fire',name:'Cosmic Fire',    rarity:'cosmic',    cost:10000000, colors:['#ff0060','#ff8000','#ffff00'],          label:'⚠ ULTRA RARE. Flex this and win.' },
+  { id:'void_king',  name:'Void King',      rarity:'cosmic',    cost:15000000, colors:['#200040','#6000ff','#ff00ff'],          label:'⚠ The rarest skin in existence.' },
+];
+
+const SKIN_RARITY_STYLES = {
+  common:    { color:'#a0a0a0', glow:'none',                          label:'Common'    },
+  uncommon:  { color:'#40c040', glow:'none',                          label:'Uncommon'  },
+  rare:      { color:'#4080ff', glow:'0 0 8px rgba(60,120,255,0.6)',  label:'Rare'      },
+  epic:      { color:'#a040e0', glow:'0 0 10px rgba(160,60,220,0.7)', label:'Epic'      },
+  legendary: { color:'#ff9000', glow:'0 0 14px rgba(255,140,0,0.8)',  label:'Legendary' },
+  mythic:    { color:'#ff2060', glow:'0 0 18px rgba(255,20,80,0.9)',  label:'Mythic'    },
+  cosmic:    { color:'#00ffff', glow:'0 0 22px rgba(0,255,255,1)',    label:'✦ COSMIC ✦'},
+};
+
+let currentSkinId  = localStorage.getItem('dh_skin') || 'default';
+let ownedSkins     = JSON.parse(localStorage.getItem('dh_skins') || '["default"]');
+function currentSkin(){ return GUN_SKINS.find(s=>s.id===currentSkinId)||GUN_SKINS[0]; }
+
+// ── DRAW GUN ─────────────────────────────────────────────────
+function drawGun(){
+  if(gameState!=='PLAYING'&&gameState!=='RELOADING') return;
+  const skin = currentSkin();
+  const [c1,c2,c3] = skin.colors;
+  const t = Date.now()*0.002;
+  const sr = SKIN_RARITY_STYLES[skin.rarity];
+
+  // Gun sits at bottom-center-right, big and proud
+  // Pivot bottom-center, angled slightly up-left
+  const px = W*0.68;
+  const py = H + 30;
+  const angle = -0.18;
+
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(angle);
+
+  // Glow for rare+
+  if(skin.rarity==='epic'||skin.rarity==='legendary'||skin.rarity==='mythic'||skin.rarity==='cosmic'){
+    const pulse = 0.5+0.4*Math.sin(t*2);
+    ctx.shadowColor = sr.color;
+    ctx.shadowBlur  = 24+pulse*22;
+  }
+  if(skin.rarity==='cosmic'){
+    const h=(t*40)%360;
+    ctx.shadowColor=`hsl(${h},100%,70%)`; ctx.shadowBlur=40+Math.sin(t*3)*14;
+  }
+
+  // ── BACK HAND on grip ──────────────────────────────────
+  ctx.fillStyle='#d4a070';
+  ctx.beginPath(); ctx.ellipse(-95,-42,26,20,0.3,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#c49060';
+  [-14,-5,4,13].forEach((oy,i)=>{
+    ctx.beginPath(); ctx.ellipse(-110+i*5,-32+oy,8,6,0.5,0,Math.PI*2); ctx.fill();
+  });
+  // Thumb
+  ctx.fillStyle='#d4a070';
+  ctx.beginPath(); ctx.ellipse(-80,-28,7,12,0.9,0,Math.PI*2); ctx.fill();
+
+  // ── STOCK ──────────────────────────────────────────────
+  ctx.fillStyle=c1;
+  ctx.beginPath();
+  ctx.moveTo(-40,-14);
+  ctx.lineTo(-240,-38);
+  ctx.lineTo(-255,-58);
+  ctx.lineTo(-160,-62);
+  ctx.lineTo(-36,-36);
+  ctx.closePath(); ctx.fill();
+  // Cheek rest
+  ctx.fillStyle=c3;
+  ctx.beginPath();
+  ctx.moveTo(-160,-62); ctx.lineTo(-245,-60); ctx.lineTo(-242,-46); ctx.lineTo(-158,-48); ctx.closePath(); ctx.fill();
+  // Buttplate
+  ctx.fillStyle=c3;
+  ctx.beginPath(); ctx.ellipse(-252,-52,5,14,0.1,0,Math.PI*2); ctx.fill();
+
+  // ── TRIGGER GUARD ──────────────────────────────────────
+  ctx.fillStyle=c3;
+  ctx.beginPath(); ctx.ellipse(-88,-34,16,12,0.15,0,Math.PI*2); ctx.fill();
+
+  // ── GRIP ───────────────────────────────────────────────
+  ctx.fillStyle=c1;
+  ctx.beginPath();
+  ctx.moveTo(-72,-22); ctx.lineTo(-56,-22);
+  ctx.lineTo(-50, 14); ctx.lineTo(-80, 16);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.22)'; ctx.lineWidth=2;
+  for(let i=0;i<4;i++){
+    ctx.beginPath(); ctx.moveTo(-76+i*7,-18); ctx.lineTo(-72+i*7,12); ctx.stroke();
+  }
+
+  // ── MAIN BODY ──────────────────────────────────────────
+  ctx.fillStyle=c2;
+  ctx.beginPath();
+  ctx.moveTo(-38,-22); ctx.lineTo(148,-52);
+  ctx.lineTo(148,-70); ctx.lineTo(-38,-42);
+  ctx.closePath(); ctx.fill();
+
+  // Pattern overlay
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(-38,-22); ctx.lineTo(148,-52); ctx.lineTo(148,-70); ctx.lineTo(-38,-42); ctx.closePath();
+  ctx.clip();
+  ctx.globalAlpha=0.5+0.15*Math.sin(t*1.5);
+  if(skin.id==='galaxy'||skin.id==='aurora'||skin.id==='cosmic_fire'||skin.id==='void_king'){
+    const grad=ctx.createLinearGradient(-38,-70,148,-22);
+    skin.colors.forEach((col,i)=>grad.addColorStop(i/2,col));
+    ctx.fillStyle=grad; ctx.fillRect(-38,-70,186,50);
+  } else if(skin.id==='lava'||skin.id==='inferno'){
+    for(let i=0;i<6;i++){
+      ctx.fillStyle=`rgba(255,${60+i*28},0,0.6)`;
+      ctx.beginPath(); ctx.ellipse(-10+i*30+Math.sin(t+i)*5,-46,6,18,0.3,0,Math.PI*2); ctx.fill();
+    }
+  } else if(skin.id==='tiger_strp'){
+    ctx.strokeStyle='rgba(15,8,0,0.65)'; ctx.lineWidth=7; ctx.globalAlpha=0.65;
+    for(let i=0;i<5;i++){
+      ctx.beginPath(); ctx.moveTo(-10+i*32,-24+i*2); ctx.lineTo(-4+i*32,-68); ctx.stroke();
+    }
+  } else if(skin.id==='chrome'||skin.id==='diamond'){
+    const shine=ctx.createLinearGradient(-38,-70,148,-22);
+    shine.addColorStop(0,'rgba(255,255,255,0)');
+    shine.addColorStop(0.35+0.2*Math.sin(t),'rgba(255,255,255,0.7)');
+    shine.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.globalAlpha=1; ctx.fillStyle=shine; ctx.fillRect(-38,-70,186,50);
+  } else if(skin.id==='venom'){
+    for(let i=0;i<7;i++){
+      ctx.fillStyle='rgba(80,220,0,0.5)';
+      ctx.beginPath(); ctx.ellipse(-20+i*26,-50+Math.sin(i)*7,4,12,0.2,0,Math.PI*2); ctx.fill();
+    }
+  } else if(skin.id==='amethyst'){
+    const grad=ctx.createLinearGradient(-38,-70,148,-22);
+    grad.addColorStop(0,'rgba(100,0,180,0.6)'); grad.addColorStop(1,'rgba(180,80,255,0.3)');
+    ctx.fillStyle=grad; ctx.fillRect(-38,-70,186,50);
+  } else if(skin.id==='deep_sea'){
+    for(let i=0;i<5;i++){
+      ctx.fillStyle=`rgba(0,${60+i*15},${100+i*20},0.4)`;
+      ctx.beginPath(); ctx.ellipse(-15+i*34,-46,8,20,0.1,0,Math.PI*2); ctx.fill();
+    }
+  } else if(skin.id==='void'){
+    ctx.fillStyle='rgba(40,0,80,0.7)'; ctx.fillRect(-38,-70,186,50);
+    ctx.fillStyle='rgba(100,0,200,0.25)';
+    ctx.beginPath(); ctx.ellipse(55,-46,60,12,0,0,Math.PI*2); ctx.fill();
+  } else if(skin.id==='army_camo'){
+    [[0,'rgba(40,55,20,0.6)'],[30,'rgba(60,80,30,0.4)'],[70,'rgba(30,40,15,0.5)'],[110,'rgba(55,70,25,0.4)']].forEach(([ox,col])=>{
+      ctx.fillStyle=col;
+      ctx.beginPath(); ctx.ellipse(-10+ox,-44,18,14,0.4,0,Math.PI*2); ctx.fill();
+    });
+  }
+  ctx.restore();
+
+  // ── MAGAZINE ───────────────────────────────────────────
+  ctx.fillStyle=c3;
+  ctx.beginPath();
+  ctx.moveTo(-24,-42); ctx.lineTo(-8,-42); ctx.lineTo(-4,-12); ctx.lineTo(-28,-12); ctx.closePath(); ctx.fill();
+
+  // ── SCOPE RAIL ─────────────────────────────────────────
+  ctx.fillStyle=c3; ctx.fillRect(14,-72,110,6);
+  // Scope body
+  ctx.fillStyle=c1;
+  ctx.beginPath(); ctx.ellipse(68,-82,52,13,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=c3;
+  ctx.beginPath(); ctx.ellipse(68,-82,32,8,0,0,Math.PI*2); ctx.fill();
+  // Front lens
+  const lensCol=skin.rarity==='cosmic'?`hsl(${(t*80)%360},100%,70%)`:sr.color;
+  ctx.fillStyle=lensCol; ctx.shadowColor=lensCol; ctx.shadowBlur=12;
+  ctx.beginPath(); ctx.arc(116,-82,9,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  // Rear lens
+  ctx.fillStyle=c2; ctx.beginPath(); ctx.arc(22,-82,6,0,Math.PI*2); ctx.fill();
+  // Scope crosshair glint
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(108,-82); ctx.lineTo(124,-82); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(116,-90); ctx.lineTo(116,-74); ctx.stroke();
+
+  // ── BARREL ─────────────────────────────────────────────
+  ctx.fillStyle=c1;
+  ctx.beginPath();
+  ctx.moveTo(142,-52); ctx.lineTo(340,-86);
+  ctx.lineTo(340,-96); ctx.lineTo(142,-66);
+  ctx.closePath(); ctx.fill();
+  // Under-barrel rail
+  ctx.fillStyle=c3;
+  ctx.beginPath();
+  ctx.moveTo(142,-66); ctx.lineTo(300,-90); ctx.lineTo(300,-96); ctx.lineTo(142,-68);
+  ctx.closePath(); ctx.fill();
+  // Muzzle brake
+  ctx.fillStyle=c3;
+  ctx.beginPath(); ctx.ellipse(340,-91,6,12,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=2;
+  [310,322,333].forEach(bx=>{
+    ctx.beginPath(); ctx.moveTo(bx,-88); ctx.lineTo(bx,-96); ctx.stroke();
+  });
+
+  // ── FRONT HAND under barrel ────────────────────────────
+  ctx.fillStyle='#d4a070';
+  ctx.beginPath(); ctx.ellipse(80,-68,24,16,0.2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#c49060';
+  [0,9,18,27].forEach((ox,i)=>{
+    ctx.beginPath(); ctx.ellipse(68+ox,-78+i*1.5,7,5,0.35,0,Math.PI*2); ctx.fill();
+  });
+  ctx.fillStyle='#d4a070';
+  ctx.beginPath(); ctx.ellipse(60,-62,6,11,0.8,0,Math.PI*2); ctx.fill();
+
+  // ── SKIN NAME (mythic/cosmic) ───────────────────────────
+  if(skin.rarity==='mythic'||skin.rarity==='cosmic'){
+    ctx.save();
+    const tagCol=skin.rarity==='cosmic'?`hsl(${(t*60)%360},100%,75%)`:sr.color;
+    ctx.font='bold 12px Georgia'; ctx.textAlign='center';
+    ctx.fillStyle=tagCol; ctx.shadowColor=tagCol; ctx.shadowBlur=12;
+    ctx.fillText(skin.name.toUpperCase(), 68, -100);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// ── SKINS SHOP TAB ───────────────────────────────────────────
+function renderSkinsTab(grid){
+  grid.className='skin-grid';
+  GUN_SKINS.forEach(skin=>{
+    const owned    = ownedSkins.includes(skin.id);
+    const equipped = currentSkinId===skin.id;
+    const canAfford= score>=skin.cost;
+    const sr       = SKIN_RARITY_STYLES[skin.rarity];
+    const [c1,c2,c3] = skin.colors;
+
+    const card = document.createElement('div');
+    card.className = 'skin-card'+(equipped?' equipped':!owned&&!canAfford?' locked':'');
+    if(equipped) card.style.boxShadow = sr.glow;
+
+    // ── CANVAS PREVIEW ───────────────────────────────────
+    const pw=220, ph=90;
+    const cvs = document.createElement('canvas');
+    cvs.width=pw; cvs.height=ph;
+    cvs.style.cssText=`width:100%;height:${ph}px;border-radius:6px;display:block;margin-bottom:8px;border:1px solid rgba(120,70,15,0.3)`;
+    const pc = cvs.getContext('2d');
+
+    // BG
+    const bg=pc.createLinearGradient(0,0,0,ph);
+    bg.addColorStop(0,'#0e0a06'); bg.addColorStop(1,'#060402');
+    pc.fillStyle=bg; pc.fillRect(0,0,pw,ph);
+    // Rarity glow under
+    if(['epic','legendary','mythic','cosmic'].includes(skin.rarity)){
+      const rg=pc.createRadialGradient(pw/2,ph,0,pw/2,ph,pw*0.55);
+      rg.addColorStop(0,sr.color+'44'); rg.addColorStop(1,'transparent');
+      pc.fillStyle=rg; pc.fillRect(0,0,pw,ph);
+    }
+
+    // Draw gun left-to-right inside canvas
+    const gx=12, gy=72;
+
+    // Stock
+    pc.fillStyle=c1;
+    pc.beginPath();
+    pc.moveTo(gx,gy); pc.lineTo(gx+28,gy-14); pc.lineTo(gx+86,gy-14);
+    pc.lineTo(gx+84,gy-5); pc.lineTo(gx+2,gy-2); pc.closePath(); pc.fill();
+    pc.fillStyle=c3;
+    pc.beginPath();
+    pc.moveTo(gx+28,gy-14); pc.lineTo(gx+86,gy-14);
+    pc.lineTo(gx+84,gy-19); pc.lineTo(gx+28,gy-19); pc.closePath(); pc.fill();
+
+    // Grip
+    pc.fillStyle=c1;
+    pc.beginPath();
+    pc.moveTo(gx+68,gy-7); pc.lineTo(gx+80,gy-7);
+    pc.lineTo(gx+84,gy+8); pc.lineTo(gx+64,gy+8); pc.closePath(); pc.fill();
+    pc.strokeStyle='rgba(0,0,0,0.22)'; pc.lineWidth=1.2;
+    for(let i=0;i<3;i++){pc.beginPath();pc.moveTo(gx+67+i*5,gy-5);pc.lineTo(gx+69+i*5,gy+6);pc.stroke();}
+
+    // Trigger guard
+    pc.fillStyle=c3;
+    pc.beginPath(); pc.ellipse(gx+88,gy-9,9,7,0.1,0,Math.PI*2); pc.fill();
+
+    // Body
+    pc.fillStyle=c2;
+    pc.beginPath();
+    pc.moveTo(gx+76,gy-11); pc.lineTo(gx+172,gy-26);
+    pc.lineTo(gx+172,gy-36); pc.lineTo(gx+76,gy-21); pc.closePath(); pc.fill();
+
+    // Pattern on body
+    pc.save();
+    pc.beginPath();
+    pc.moveTo(gx+76,gy-11); pc.lineTo(gx+172,gy-26);
+    pc.lineTo(gx+172,gy-36); pc.lineTo(gx+76,gy-21); pc.closePath();
+    pc.clip(); pc.globalAlpha=0.65;
+    if(['galaxy','aurora','cosmic_fire','void_king'].includes(skin.id)){
+      const gr=pc.createLinearGradient(gx+76,gy-36,gx+172,gy-11);
+      skin.colors.forEach((col,i)=>gr.addColorStop(i/2,col)); pc.fillStyle=gr; pc.fillRect(gx+76,gy-36,96,26);
+    } else if(['lava','inferno'].includes(skin.id)){
+      for(let i=0;i<4;i++){pc.fillStyle=`rgba(255,${50+i*45},0,0.7)`;pc.beginPath();pc.ellipse(gx+94+i*20,gy-24,4,12,0.3,0,Math.PI*2);pc.fill();}
+    } else if(skin.id==='tiger_strp'){
+      pc.strokeStyle='rgba(12,6,0,0.72)'; pc.lineWidth=5;
+      for(let i=0;i<4;i++){pc.beginPath();pc.moveTo(gx+86+i*22,gy-13);pc.lineTo(gx+92+i*22,gy-36);pc.stroke();}
+    } else if(['chrome','diamond'].includes(skin.id)){
+      const sh=pc.createLinearGradient(gx+76,gy-36,gx+172,gy-11);
+      sh.addColorStop(0,'rgba(255,255,255,0)'); sh.addColorStop(0.45,'rgba(255,255,255,0.8)'); sh.addColorStop(1,'rgba(255,255,255,0)');
+      pc.globalAlpha=1; pc.fillStyle=sh; pc.fillRect(gx+76,gy-36,96,26);
+    } else if(skin.id==='venom'){
+      for(let i=0;i<5;i++){pc.fillStyle='rgba(60,210,0,0.6)';pc.beginPath();pc.ellipse(gx+84+i*19,gy-26+Math.sin(i)*3,3,9,0.2,0,Math.PI*2);pc.fill();}
+    } else if(skin.id==='army_camo'){
+      [[0,'rgba(40,55,20,0.65)'],[22,'rgba(60,80,30,0.55)'],[48,'rgba(30,40,15,0.65)'],[70,'rgba(55,70,25,0.55)']].forEach(([ox,col])=>{
+        pc.fillStyle=col; pc.beginPath(); pc.ellipse(gx+86+ox,gy-24,11,9,0.4,0,Math.PI*2); pc.fill();
+      });
+    } else if(skin.id==='amethyst'){
+      const gr=pc.createLinearGradient(gx+76,gy-36,gx+172,gy-11);
+      gr.addColorStop(0,'rgba(100,0,180,0.75)'); gr.addColorStop(1,'rgba(180,80,255,0.45)');
+      pc.globalAlpha=1; pc.fillStyle=gr; pc.fillRect(gx+76,gy-36,96,26);
+    } else if(skin.id==='void'){
+      pc.fillStyle='rgba(40,0,80,0.85)'; pc.fillRect(gx+76,gy-36,96,26);
+      pc.fillStyle='rgba(100,0,200,0.3)'; pc.beginPath(); pc.ellipse(gx+124,gy-24,40,10,0,0,Math.PI*2); pc.fill();
+    } else if(skin.id==='deep_sea'){
+      for(let i=0;i<4;i++){pc.fillStyle=`rgba(0,${55+i*18},${100+i*22},0.5)`;pc.beginPath();pc.ellipse(gx+88+i*22,gy-24,6,14,0.1,0,Math.PI*2);pc.fill();}
+    } else if(skin.id==='midnight'){
+      pc.fillStyle='rgba(5,5,20,0.7)'; pc.fillRect(gx+76,gy-36,96,26);
+      pc.fillStyle='rgba(30,30,80,0.3)'; pc.beginPath(); pc.ellipse(gx+124,gy-24,40,8,0,0,Math.PI*2); pc.fill();
+    }
+    pc.restore();
+
+    // Magazine
+    pc.fillStyle=c3;
+    pc.beginPath();
+    pc.moveTo(gx+96,gy-21); pc.lineTo(gx+106,gy-21);
+    pc.lineTo(gx+109,gy-8); pc.lineTo(gx+93,gy-8); pc.closePath(); pc.fill();
+
+    // Scope rail
+    pc.fillStyle=c3; pc.fillRect(gx+114,gy-38,68,4);
+    // Scope
+    pc.fillStyle=c1; pc.beginPath(); pc.ellipse(gx+146,gy-46,30,8,0,0,Math.PI*2); pc.fill();
+    pc.fillStyle=c3; pc.beginPath(); pc.ellipse(gx+146,gy-46,19,5,0,0,Math.PI*2); pc.fill();
+    // Lens glow
+    if(['rare','epic','legendary','mythic','cosmic'].includes(skin.rarity)){pc.shadowColor=sr.color; pc.shadowBlur=10;}
+    pc.fillStyle=sr.color;
+    pc.beginPath(); pc.arc(gx+172,gy-46,6,0,Math.PI*2); pc.fill();
+    pc.shadowBlur=0;
+    pc.fillStyle=c2; pc.beginPath(); pc.arc(gx+120,gy-46,4,0,Math.PI*2); pc.fill();
+
+    // Barrel
+    pc.fillStyle=c1;
+    pc.beginPath();
+    pc.moveTo(gx+168,gy-26); pc.lineTo(pc_barrelEnd=gx+214,gy-34);
+    pc.lineTo(gx+214,gy-40); pc.lineTo(gx+168,gy-34); pc.closePath(); pc.fill();
+    pc.fillStyle=c3; pc.beginPath(); pc.ellipse(gx+214,gy-37,3,7,0,0,Math.PI*2); pc.fill();
+
+    // Rarity label strip at top
+    pc.fillStyle=sr.color+'33';
+    pc.fillRect(0,0,pw,14);
+    pc.fillStyle=sr.color;
+    pc.font='bold 9px Georgia'; pc.textAlign='center';
+    if(['rare','epic','legendary','mythic','cosmic'].includes(skin.rarity)){
+      pc.shadowColor=sr.color; pc.shadowBlur=6;
+    }
+    pc.fillText(sr.label.toUpperCase(), pw/2, 10);
+    pc.shadowBlur=0;
+
+    card.appendChild(cvs);
+
+    // Name
+    const nameEl = document.createElement('div');
+    nameEl.className='skin-name'; nameEl.textContent=skin.name;
+    card.appendChild(nameEl);
+
+    // Button
+    const btn = document.createElement('button');
+    if(equipped){
+      btn.textContent='✓ EQUIPPED'; btn.disabled=true;
+      btn.style.cssText='color:#f0c060;border-color:#f0c060';
+    } else if(owned){
+      btn.textContent='Equip';
+      btn.onclick=()=>equipSkin(skin.id);
+    } else {
+      btn.textContent=`$${skin.cost.toLocaleString()}`;
+      btn.disabled=!canAfford;
+      btn.onclick=()=>buySkin(skin.id);
+    }
+    card.appendChild(btn);
+    grid.appendChild(card);
+  });
+}
+
+function buySkin(id){
+  const skin=GUN_SKINS.find(s=>s.id===id);
+  if(!skin||score<skin.cost||ownedSkins.includes(id)) return;
+  score-=skin.cost;
+  localStorage.setItem('dh_score',score);
+  ownedSkins.push(id);
+  localStorage.setItem('dh_skins',JSON.stringify(ownedSkins));
+  currentSkinId=id;
+  localStorage.setItem('dh_skin',id);
+  updateHUD();
+  renderShop();
+}
+function equipSkin(id){
+  currentSkinId=id;
+  localStorage.setItem('dh_skin',id);
+  updateHUD();
+  renderShop();
+}
 // ── GO ───────────────────────────────────────────────────────
 updateHUD();
 requestAnimationFrame(loop);
+
+
 </script>
 </body>
 </html>
