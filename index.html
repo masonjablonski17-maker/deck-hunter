@@ -4382,10 +4382,10 @@ let gambBet=0, gambSpinning=false;
 // Silent pity — no UI, just quietly kicks in after bad luck
 let pityLosses=0, pityMoneyLost=0;
 const PITY_TIERS=[
-  [5,  500000,   '🔥','🔥','🔥', 'Fire',    8  ],
-  [8,  2000000,  '7️⃣','7️⃣','7️⃣', 'Lucky 7', 10 ],
-  [20, 30000000, '⭐','⭐','⭐', 'Jackpot', 50 ],
-  [35, 100000000,'💎','💎','💎', 'Diamond', 100],
+  [20, 10000000,  '🔥','🔥','🔥', 'Fire',    8  ],
+  [30, 25000000,  '7️⃣','7️⃣','7️⃣', 'Lucky 7', 10 ],
+  [999, 100000000, '⭐','⭐','⭐', 'Jackpot', 50 ],
+  [999, 500000000, '💎','💎','💎', 'Diamond', 100],
 ];
 
 function openGamb(){
