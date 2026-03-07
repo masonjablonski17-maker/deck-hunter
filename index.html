@@ -884,6 +884,12 @@ body {
         <button class="admin-btn gold" onclick="adminGivePlayerCash(1)">💰 Give</button>
         <button class="admin-btn" onclick="adminGivePlayerCash(-1)" style="border-color:#ff6040;color:#ff8060">🔥 Take</button>
         <div id="adminCashResult" style="font-size:11px;color:#a09040;font-family:Georgia,serif;margin-top:2px;width:100%;"></div>
+        <div style="width:100%;margin-top:6px;">
+          <button class="admin-btn" onclick="adminLoadPlayerList()" style="font-size:11px;">🔍 Load Player List</button>
+          <select id="adminPlayerList" style="margin-left:6px;background:rgba(20,12,4,0.9);border:1px solid rgba(160,90,20,0.5);border-radius:4px;color:#f0c060;font-size:12px;font-family:Georgia,serif;padding:3px 6px;outline:none;display:none;" onchange="adminPickPlayer(this.value)">
+            <option value="">— select player —</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -5498,6 +5504,32 @@ function adminAddCustomCash(){
   const val=parseInt(document.getElementById('adminCashInput').value)||0;
   if(val>0) adminAddCash(val);
   document.getElementById('adminCashInput').value='';
+}
+function adminLoadPlayerList(){
+  const sel=document.getElementById('adminPlayerList');
+  const resultEl=document.getElementById('adminCashResult');
+  resultEl.textContent='Loading...'; resultEl.style.color='#a09040';
+  db.ref('leaderboard').once('value', snap=>{
+    sel.innerHTML='<option value="">— select player —</option>';
+    const players=[];
+    snap.forEach(child=>{
+      const v=child.val();
+      if(v && v.name) players.push({name:v.name, cash:v.cash||0});
+    });
+    players.sort((a,b)=>b.cash-a.cash);
+    players.forEach(p=>{
+      const opt=document.createElement('option');
+      opt.value=p.name;
+      opt.textContent=`${p.name} — $${p.cash.toLocaleString()}`;
+      sel.appendChild(opt);
+    });
+    sel.style.display='inline-block';
+    resultEl.textContent=`${players.length} players loaded.`;
+  });
+}
+function adminPickPlayer(name){
+  if(!name) return;
+  document.getElementById('adminTargetName').value=name;
 }
 function adminGivePlayerCash(sign){
   const target=(document.getElementById('adminTargetName').value||'').trim();
