@@ -4379,6 +4379,14 @@ const PAYOUT_TABLE=[
 ];
 
 let gambBet=0, gambSpinning=false;
+// Silent pity — no UI, just quietly kicks in after bad luck
+let pityLosses=0, pityMoneyLost=0;
+const PITY_TIERS=[
+  [5,  500000,   '🔥','🔥','🔥', 'Fire',    8  ],
+  [8,  2000000,  '7️⃣','7️⃣','7️⃣', 'Lucky 7', 10 ],
+  [20, 30000000, '⭐','⭐','⭐', 'Jackpot', 50 ],
+  [35, 100000000,'💎','💎','💎', 'Diamond', 100],
+];
 
 function openGamb(){
   if(gameState!=='PLAYING'&&gameState!=='RELOADING') return;
@@ -4447,13 +4455,18 @@ function spinSlots(){
   document.getElementById('slotResult').textContent='';
   document.getElementById('spinBtn').disabled=true;
 
+  // Silently check pity — pick best tier player qualifies for
+  let pityTier=null;
+  for(let i=PITY_TIERS.length-1;i>=0;i--){
+    if(pityLosses>=PITY_TIERS[i][0]||pityMoneyLost>=PITY_TIERS[i][1]){ pityTier=PITY_TIERS[i]; break; }
+  }
+
   const reels=[null,null,null];
   const reelEls=[
     document.getElementById('reel0'),
     document.getElementById('reel1'),
     document.getElementById('reel2'),
   ];
-  // Spin animation — each reel stops 600ms apart
   reelEls.forEach(r=>r.classList.add('spinning'));
   const intervals=reelEls.map((rel,i)=>{
     return setInterval(()=>{ rel.textContent=SLOTS_SYMBOLS[Math.floor(Math.random()*SLOTS_SYMBOLS.length)].sym; },80);
@@ -4461,37 +4474,42 @@ function spinSlots(){
   [600,1200,1800].forEach((delay,i)=>{
     setTimeout(()=>{
       clearInterval(intervals[i]);
-      reels[i]=randSym();
+      reels[i]=pityTier ? {sym:pityTier[2+i],label:pityTier[5]} : randSym();
       reelEls[i].textContent=reels[i].sym;
       reelEls[i].classList.remove('spinning');
-      if(i===2) resolveSlots(reels);
+      if(i===2) resolveSlots(reels, pityTier);
     },delay);
   });
 }
-function resolveSlots(reels){
+function resolveSlots(reels, pityTier){
   const [a,b,c]=reels;
   let mult=0, resultText='', resultColor='#f0c060';
+  let isRealWin=false;
 
-  if(a.sym===b.sym && b.sym===c.sym){
-    // Three of a kind
+  if(pityTier){
+    mult=pityTier[6];
+    resultText=`🎉 ${pityTier[5]} × 3 — ×${mult} PAYOUT!`;
+    resultColor='#f0c060';
+    isRealWin=true;
+  } else if(a.sym===b.sym && b.sym===c.sym){
     const entry=PAYOUT_TABLE.find(p=>p.combo.includes(a.sym));
     if(entry){ mult=entry.mult; resultColor=entry.color; }
     else { mult=2; resultColor='#80c060'; }
     if(mult===0){
-      resultText='💀 YOU LOSE! 💀';
-      resultColor='#ff3030';
+      resultText='💀 YOU LOSE! 💀'; resultColor='#ff3030';
     } else {
       resultText=`🎉 ${a.label||a.sym} × 3 — ×${mult} PAYOUT!`;
+      if(mult>1) isRealWin=true;
     }
   } else if(a.sym===b.sym || b.sym===c.sym || a.sym===c.sym){
-    mult=1;
-    resultText='Pair! Break even.';
-    resultColor='#c0c060';
+    mult=1; resultText='Pair! Break even.'; resultColor='#c0c060';
   } else {
-    mult=0;
-    resultText='No match. Better luck next time!';
-    resultColor='#804030';
+    mult=0; resultText='No match. Better luck next time!'; resultColor='#804030';
   }
+
+  // Update silent pity counters
+  if(isRealWin){ pityLosses=0; pityMoneyLost=0; }
+  else { pityLosses++; if(mult===0) pityMoneyLost+=gambBet; }
 
   const winAmt=Math.round(gambBet*mult);
   score+=winAmt;
@@ -4504,7 +4522,6 @@ function resolveSlots(reels){
     addFloat(W/2,H*0.3,`-$${gambBet.toLocaleString()} 💀`,'#ff3030');
   }
 
-  // Flash reel boxes on win
   const reelEls=[
     document.getElementById('reel0'),
     document.getElementById('reel1'),
@@ -4521,7 +4538,6 @@ function resolveSlots(reels){
   document.getElementById('slotResult').style.color=resultColor;
   document.getElementById('slotResult').textContent=resultText;
   document.getElementById('gambCash').textContent=`Your Cash: $${score.toLocaleString()}`;
-  // Refresh payout table win column
   renderGamb();
   document.getElementById('spinBtn').disabled=false;
   gambSpinning=false;
