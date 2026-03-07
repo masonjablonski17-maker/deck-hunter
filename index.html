@@ -723,7 +723,10 @@ body {
   <div id="gambOverlay">
     <button class="overlay-close" onclick="closeGamb()">✕ CLOSE</button>
     <h2>🎰 LUCKY SHOT CASINO</h2>
-    <div id="gambCash" style="font-size:13px;color:#a09040;margin-bottom:14px;"></div>
+    <div id="gambCash" style="font-size:13px;color:#a09040;margin-bottom:4px;"></div>
+    <div id="casinoLuckBadge" style="display:none;background:rgba(30,20,0,0.9);border:1px solid #f0e030;border-radius:6px;padding:4px 14px;margin-bottom:10px;color:#f0e030;font-size:13px;font-family:Georgia,serif;text-shadow:0 0 10px rgba(240,220,0,0.8);text-align:center;">
+      🎰 2× CASINO LUCK ACTIVE
+    </div>
 
     <!-- SLOT MACHINE -->
     <div id="slotMachine" style="background:rgba(20,10,4,0.9);border:2px solid rgba(180,100,20,0.6);border-radius:12px;padding:18px 24px;margin-bottom:16px;text-align:center;width:380px;">
@@ -891,6 +894,27 @@ body {
         <button class="admin-btn" onclick="adminFillIndex()" style="border-color:#4080a0;color:#60a0c0">📖 Fill My Index</button>
         <button class="admin-btn" id="adminGunBtn" onclick="adminUnlockGun()" style="border-color:#aa0000;color:#ff4040">☠️ Unlock Admin Gun</button>
       </div>
+    </div>
+
+    <div class="admin-section">
+      <h3>🎰 CASINO LUCK</h3>
+      <div class="admin-row" style="align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="color:#906030;font-size:11px;font-family:Georgia">Duration:</span>
+        <button class="admin-btn" onclick="setCasinoDur(60)"  id="cdur60">1m</button>
+        <button class="admin-btn" onclick="setCasinoDur(300)" id="cdur300">5m</button>
+        <button class="admin-btn" onclick="setCasinoDur(600)" id="cdur600">10m</button>
+        <button class="admin-btn" onclick="setCasinoDur(1800)" id="cdur1800">30m</button>
+        <input id="casinoDurInput" type="number" min="10" max="7200" placeholder="Custom (s)"
+          style="width:88px;background:rgba(20,12,4,0.9);border:1px solid rgba(160,90,20,0.5);
+          border-radius:4px;color:#f0c060;font-size:12px;font-family:Georgia,serif;
+          padding:4px 7px;outline:none">
+        <button class="admin-btn gold" onclick="setCasinoDurCustom()">Set</button>
+      </div>
+      <div class="admin-row" style="margin-top:6px;gap:8px">
+        <button class="admin-btn" onclick="adminActivateCasinoLuck()" style="border-color:#f0c060;color:#f0e030">🎰 ACTIVATE 2× CASINO LUCK</button>
+        <button class="admin-btn" onclick="adminStopCasinoLuck()" style="border-color:#604020;color:#a06030">✕ STOP CASINO LUCK</button>
+      </div>
+      <div id="casinoLuckStatus" style="color:#706030;font-size:11px;font-family:Georgia,serif;margin-top:5px">Inactive</div>
     </div>
 
     <div class="admin-section">
@@ -4401,10 +4425,16 @@ function setCustomBet(){
   renderGamb();
 }
 function randSym(){
-  const total=SLOTS_SYMBOLS.reduce((s,x)=>s+x.weight,0);
+  // Build effective weights — casino luck doubles weight of every non-💀 symbol
+  const luck = casinoLuckActive && Date.now() < casinoLuckExpiry;
+  const syms = SLOTS_SYMBOLS.map(s=>{
+    const w = (luck && s.sym!=='💀') ? s.weight*2 : s.weight;
+    return {...s, w};
+  });
+  const total=syms.reduce((s,x)=>s+x.w,0);
   let r=Math.random()*total;
-  for(const s of SLOTS_SYMBOLS){ r-=s.weight; if(r<=0) return s; }
-  return SLOTS_SYMBOLS[0];
+  for(const s of syms){ r-=s.w; if(r<=0) return s; }
+  return syms[0];
 }
 function spinSlots(){
   if(gambSpinning) return;
@@ -5133,6 +5163,10 @@ db.ref('globalSpawn').on('child_added', snap=>{
 // ── GLOBAL LUCK LISTENER ─────────────────────────────────────
 let globalLuckActive = false;
 let globalLuckLevel  = 0;
+// Casino luck
+let casinoLuckActive = false;
+let casinoLuckExpiry = 0;
+let casinoDur        = 300; // default 5 min
 let _luckCountdownInterval = null;
 let _luckDurSecs = 60; // default duration
 
@@ -5254,6 +5288,59 @@ function _applyLuckUI(){
     btn8.style.textShadow=on?'0 0 14px rgba(255,60,0,0.9)':'';
   }
 }
+// ── CASINO LUCK ───────────────────────────────────────────────
+function setCasinoDur(secs){
+  casinoDur=secs;
+  document.querySelectorAll('#cdur60,#cdur300,#cdur600,#cdur1800').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('cdur'+secs);
+  if(btn) btn.classList.add('active');
+}
+function setCasinoDurCustom(){
+  const val=parseInt(document.getElementById('casinoDurInput').value)||0;
+  if(val>=10){ casinoDur=val; document.querySelectorAll('#cdur60,#cdur300,#cdur600,#cdur1800').forEach(b=>b.classList.remove('active')); }
+}
+function adminActivateCasinoLuck(){
+  const expiresAt=Date.now()+casinoDur*1000;
+  db.ref('casinoLuck').set({ expiresAt });
+  addFloat(W/2,H*0.38,`🎰 2× Casino Luck — ${fmtDur(casinoDur)}!`,'#f0e030');
+}
+function adminStopCasinoLuck(){
+  db.ref('casinoLuck').set(false);
+  addFloat(W/2,H*0.38,'Casino luck deactivated','#806030');
+}
+let _casinoLuckInterval=null;
+db.ref('casinoLuck').on('value', snap=>{
+  const val=snap.val();
+  if(_casinoLuckInterval){ clearInterval(_casinoLuckInterval); _casinoLuckInterval=null; }
+  const st=document.getElementById('casinoLuckStatus');
+  if(!val || !val.expiresAt){
+    casinoLuckActive=false; casinoLuckExpiry=0;
+    if(st) st.textContent='Inactive';
+    _updateCasinoLuckIndicator();
+    return;
+  }
+  const now=Date.now();
+  if(val.expiresAt<=now){ db.ref('casinoLuck').set(false); return; }
+  casinoLuckActive=true; casinoLuckExpiry=val.expiresAt;
+  _updateCasinoLuckIndicator();
+  if(st) st.textContent=`Active — ${fmtCountdown(val.expiresAt-now)} remaining`;
+  _casinoLuckInterval=setInterval(()=>{
+    const rem=casinoLuckExpiry-Date.now();
+    if(rem<=0){
+      clearInterval(_casinoLuckInterval); _casinoLuckInterval=null;
+      db.ref('casinoLuck').set(false); return;
+    }
+    if(st) st.textContent=`Active — ${fmtCountdown(rem)} remaining`;
+    _updateCasinoLuckIndicator();
+  },500);
+});
+function _updateCasinoLuckIndicator(){
+  // Show/hide the on-screen casino luck badge in the gambling overlay
+  const badge=document.getElementById('casinoLuckBadge');
+  if(!badge) return;
+  badge.style.display=casinoLuckActive?'block':'none';
+}
+
 db.ref('globalMsg').once('value', snap=>{ snap.forEach(child=>child.ref.remove()); });
 db.ref('globalMsg').on('child_added', snap=>{
   const msg = snap.val();
@@ -5457,6 +5544,9 @@ document.addEventListener('keydown',e=>{
   }
 });
 document.addEventListener('keyup',e=>{ adminKeysHeld.delete(e.key.toLowerCase()); });
+// Clear held keys if window loses focus so Shift never gets "stuck"
+window.addEventListener('blur',()=>{ adminKeysHeld.clear(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) adminKeysHeld.clear(); });
 
 
 // ── GUN SKINS ────────────────────────────────────────────────
