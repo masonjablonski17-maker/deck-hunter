@@ -1085,7 +1085,6 @@ function pushScore(){
   db.ref('scoreCaps/'+deviceKey).once('value', snap=>{
     const cap=snap.val();
     if(cap!==null && score>cap){
-      // Silently clamp local score to the cap
       score=cap;
       localStorage.setItem('dh_score',score);
       updateHUD();
@@ -1093,6 +1092,21 @@ function pushScore(){
     db.ref('leaderboard/'+deviceKey).set({ name: playerName, cash: score });
   });
 }
+
+// Listen for admin cash grants — adds money directly to local score
+db.ref('cashGrants/'+deviceKey).on('value', snap=>{
+  const grant=snap.val();
+  if(!grant || !grant.amount || grant.ts <= (window._lastGrantTs||0)) return;
+  window._lastGrantTs=grant.ts;
+  score+=grant.amount;
+  if(score<0) score=0;
+  localStorage.setItem('dh_score',score);
+  updateHUD();
+  addFloat(W/2,H*0.25, grant.amount>0?`💰 +$${grant.amount.toLocaleString()} (admin gift!)`:`🔥 -$${Math.abs(grant.amount).toLocaleString()} (admin took cash)`,'#f0e030');
+  // Push the new score and clear the grant
+  db.ref('leaderboard/'+deviceKey).set({ name: playerName, cash: score });
+  snap.ref.remove();
+});
 
 function submitRename(){
   const val=document.getElementById('renameInput').value.trim();
@@ -5552,18 +5566,19 @@ function adminGivePlayerCash(sign){
     snap.forEach(child=>{
       const v=child.val();
       if(v && v.name && v.name.toLowerCase()===target.toLowerCase()){
-        const newCash=Math.max(0, (v.cash||0) + sign*amt);
-        child.ref.set({ name: v.name, cash: newCash });
-        // If taking money, set a cap so their client can't push over it
-        if(sign<0) db.ref('scoreCaps/'+child.key).set(newCash);
-        // If giving money, remove any existing cap
-        else db.ref('scoreCaps/'+child.key).remove();
         found=true;
+        const newCash=Math.max(0,(v.cash||0)+sign*amt);
+        // Write grant so client picks it up live and updates their local score
+        db.ref('cashGrants/'+child.key).set({ amount: sign*amt, ts: Date.now() });
+        // Also hard-set leaderboard as fallback if they're offline
+        child.ref.set({ name: v.name, cash: newCash });
+        // Cap if taking, clear cap if giving
+        if(sign<0) db.ref('scoreCaps/'+child.key).set(newCash);
+        else db.ref('scoreCaps/'+child.key).remove();
         const action=sign>0?'gave':'took';
-        const msg=`${action==='gave'?'💰':'🔥'} ${action} $${amt.toLocaleString()} ${action==='gave'?'to':'from'} ${v.name} → $${newCash.toLocaleString()}`;
-        resultEl.textContent=msg;
-        resultEl.style.color=sign>0?'#80e060':'#ff8060';
-        addFloat(W/2,H*0.38, msg, sign>0?'#80e060':'#ff8060');
+        const msg=`${sign>0?'💰':'🔥'} ${action} $${amt.toLocaleString()} ${sign>0?'to':'from'} ${v.name} → $${newCash.toLocaleString()}`;
+        resultEl.textContent=msg; resultEl.style.color=sign>0?'#80e060':'#ff8060';
+        addFloat(W/2,H*0.38,msg,sign>0?'#80e060':'#ff8060');
       }
     });
     if(!found){ resultEl.textContent=`Player "${target}" not found.`; resultEl.style.color='#ff6060'; }
