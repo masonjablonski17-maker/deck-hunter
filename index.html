@@ -873,6 +873,18 @@ body {
         <input id="adminCashInput" type="number" placeholder="Custom amount" min="0">
         <button class="admin-btn gold" onclick="adminAddCustomCash()">Add</button>
       </div>
+      <div class="admin-row" style="margin-top:8px;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="color:#906030;font-size:11px;font-family:Georgia">Player:</span>
+        <input id="adminTargetName" type="text" maxlength="16" placeholder="Player name..."
+          style="width:120px;background:rgba(20,12,4,0.9);border:1px solid rgba(160,90,20,0.5);
+          border-radius:4px;color:#f0c060;font-size:12px;font-family:Georgia,serif;padding:4px 8px;outline:none;">
+        <input id="adminTargetAmt" type="number" placeholder="Amount"
+          style="width:110px;background:rgba(20,12,4,0.9);border:1px solid rgba(160,90,20,0.5);
+          border-radius:4px;color:#f0c060;font-size:12px;font-family:Georgia,serif;padding:4px 8px;outline:none;">
+        <button class="admin-btn gold" onclick="adminGivePlayerCash(1)">💰 Give</button>
+        <button class="admin-btn" onclick="adminGivePlayerCash(-1)" style="border-color:#ff6040;color:#ff8060">🔥 Take</button>
+        <div id="adminCashResult" style="font-size:11px;color:#a09040;font-family:Georgia,serif;margin-top:2px;width:100%;"></div>
+      </div>
     </div>
 
     <div class="admin-section">
@@ -5486,6 +5498,30 @@ function adminAddCustomCash(){
   const val=parseInt(document.getElementById('adminCashInput').value)||0;
   if(val>0) adminAddCash(val);
   document.getElementById('adminCashInput').value='';
+}
+function adminGivePlayerCash(sign){
+  const target=(document.getElementById('adminTargetName').value||'').trim();
+  const amt=parseInt(document.getElementById('adminTargetAmt').value)||0;
+  const resultEl=document.getElementById('adminCashResult');
+  if(!target){ resultEl.textContent='Enter a player name.'; resultEl.style.color='#ff6060'; return; }
+  if(!amt){ resultEl.textContent='Enter an amount.'; resultEl.style.color='#ff6060'; return; }
+  db.ref('leaderboard').once('value', snap=>{
+    let found=false;
+    snap.forEach(child=>{
+      const v=child.val();
+      if(v && v.name && v.name.toLowerCase()===target.toLowerCase()){
+        const newCash=Math.max(0, (v.cash||0) + sign*amt);
+        child.ref.set({ name: v.name, cash: newCash });
+        found=true;
+        const action=sign>0?'gave':'took';
+        const msg=`${action==='gave'?'💰':'🔥'} ${action} $${amt.toLocaleString()} ${action==='gave'?'to':'from'} ${v.name} → $${newCash.toLocaleString()}`;
+        resultEl.textContent=msg;
+        resultEl.style.color=sign>0?'#80e060':'#ff8060';
+        addFloat(W/2,H*0.38, msg, sign>0?'#80e060':'#ff8060');
+      }
+    });
+    if(!found){ resultEl.textContent=`Player "${target}" not found.`; resultEl.style.color='#ff6060'; }
+  });
 }
 function adminUnlockMaps(){
   ownedMaps=Object.keys(MAPS);
