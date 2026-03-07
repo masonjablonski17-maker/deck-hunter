@@ -889,6 +889,7 @@ body {
       <div class="admin-row">
         <button class="admin-btn" onclick="adminClearAnimals()">Clear All Animals</button>
         <button class="admin-btn" onclick="adminWipeLB()" style="border-color:#ff4040;color:#ff6060">🗑 Wipe Leaderboard</button>
+        <button class="admin-btn" onclick="adminNerfPlayer()" style="border-color:#ff8040;color:#ffaa60">🔨 Nerf Player</button>
         <button class="admin-btn" onclick="adminSetWave(1)">Reset Wave to 1</button>
         <button class="admin-btn" id="godModeBtn" onclick="adminToggleGodMode()">God Mode: OFF</button>
         <button class="admin-btn" onclick="adminFillIndex()" style="border-color:#4080a0;color:#60a0c0">📖 Fill My Index</button>
@@ -5532,6 +5533,32 @@ function adminWipeLB(){
     addFloat(W/2,H*0.4,'🗑 Leaderboard wiped!','#ff6060');
     // Re-add just this player
     if(playerName) pushScore();
+  });
+}
+function adminWipeLB(){
+  if(!confirm('Wipe the ENTIRE leaderboard? This cannot be undone.')) return;
+  db.ref('leaderboard').remove().then(()=>{
+    addFloat(W/2,H*0.4,'🗑 Leaderboard wiped!','#ff6060');
+    // Re-add just this player
+    if(playerName) pushScore();
+  });
+}
+function adminNerfPlayer(){
+  const target=prompt('Player name to nerf:');
+  if(!target) return;
+  const newCash=parseInt(prompt(`Set ${target}'s cash to:`));
+  if(isNaN(newCash)||newCash<0){ alert('Invalid amount.'); return; }
+  db.ref('leaderboard').once('value', snap=>{
+    let found=false;
+    snap.forEach(child=>{
+      const v=child.val();
+      if(v && v.name && v.name.toLowerCase()===target.toLowerCase()){
+        child.ref.set({ name: v.name, cash: newCash });
+        found=true;
+      }
+    });
+    if(found) addFloat(W/2,H*0.38,`🔨 ${target} nerfed to $${newCash.toLocaleString()}`,'#ffaa60');
+    else addFloat(W/2,H*0.38,`Player "${target}" not found`,'#ff6060');
   });
 }
 function adminClearAnimals(){
