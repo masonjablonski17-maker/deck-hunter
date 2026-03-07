@@ -1081,7 +1081,17 @@ function nameKey(n){ return n.replace(/[.#$\[\]\/]/g,'_'); }
 function pushScore(){
   if(!playerName) return;
   if(playerName.toLowerCase()==='mason') return;
-  db.ref('leaderboard/' + deviceKey).set({ name: playerName, cash: score });
+  // Check for an admin-imposed score cap before pushing
+  db.ref('scoreCaps/'+deviceKey).once('value', snap=>{
+    const cap=snap.val();
+    if(cap!==null && score>cap){
+      // Silently clamp local score to the cap
+      score=cap;
+      localStorage.setItem('dh_score',score);
+      updateHUD();
+    }
+    db.ref('leaderboard/'+deviceKey).set({ name: playerName, cash: score });
+  });
 }
 
 function submitRename(){
@@ -5544,6 +5554,10 @@ function adminGivePlayerCash(sign){
       if(v && v.name && v.name.toLowerCase()===target.toLowerCase()){
         const newCash=Math.max(0, (v.cash||0) + sign*amt);
         child.ref.set({ name: v.name, cash: newCash });
+        // If taking money, set a cap so their client can't push over it
+        if(sign<0) db.ref('scoreCaps/'+child.key).set(newCash);
+        // If giving money, remove any existing cap
+        else db.ref('scoreCaps/'+child.key).remove();
         found=true;
         const action=sign>0?'gave':'took';
         const msg=`${action==='gave'?'💰':'🔥'} ${action} $${amt.toLocaleString()} ${action==='gave'?'to':'from'} ${v.name} → $${newCash.toLocaleString()}`;
@@ -5622,6 +5636,8 @@ function adminNerfPlayer(){
       const v=child.val();
       if(v && v.name && v.name.toLowerCase()===target.toLowerCase()){
         child.ref.set({ name: v.name, cash: newCash });
+        // Also write a score cap so their client can't push higher
+        db.ref('scoreCaps/'+child.key).set(newCash);
         found=true;
       }
     });
