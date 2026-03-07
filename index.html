@@ -117,6 +117,41 @@ body {
   transition:background 0.15s;
 }
 #indexBtn:hover { background:rgba(80,40,10,0.9); }
+.reel-box {
+  width:72px; height:72px; background:rgba(8,4,1,0.9);
+  border:2px solid rgba(160,90,20,0.6); border-radius:8px;
+  font-size:36px; display:flex; align-items:center; justify-content:center;
+  transition:transform .08s;
+}
+.reel-box.spinning { animation:reelSpin 0.1s linear infinite; }
+@keyframes reelSpin { 0%{transform:scaleY(1)} 50%{transform:scaleY(0.2)} 100%{transform:scaleY(1)} }
+.bet-btn {
+  background:rgba(60,30,6,0.9); border:1px solid rgba(160,90,20,0.5);
+  border-radius:4px; color:#d4a055; font-size:12px; font-family:Georgia,serif;
+  padding:5px 10px; cursor:pointer; transition:background .15s;
+}
+.bet-btn:hover { background:rgba(110,55,10,0.95); }
+.bet-btn.active { border-color:#f0c060; background:rgba(100,50,8,0.95); color:#f0c060; }
+#gambBtn {
+  background:rgba(10,6,2,0.78); border:1px solid rgba(160,90,20,0.5);
+  border-radius:4px; color:#d4a055; font-size:14px;
+  padding:4px 12px; cursor:pointer; z-index:10;
+  font-family:'Georgia',serif; letter-spacing:.05em;
+  text-shadow:0 0 8px rgba(220,150,50,0.5);
+  transition:background 0.15s;
+}
+#gambBtn:hover { background:rgba(80,40,10,0.9); }
+#gambOverlay {
+  display:none; position:absolute; inset:0; z-index:20;
+  background:rgba(4,2,1,0.97);
+  flex-direction:column; align-items:center;
+  padding:20px 24px; overflow-y:auto;
+}
+#gambOverlay.open { display:flex; }
+#gambOverlay h2 {
+  font-size:26px; color:#f0c060; letter-spacing:.15em;
+  text-shadow:0 0 18px rgba(240,180,60,0.6); margin-bottom:4px;
+}
 #indexOverlay {
   display:none; position:absolute; inset:0; z-index:20;
   background:rgba(4,3,1,0.96);
@@ -655,7 +690,8 @@ body {
     <button id="mapBtn"   onclick="openMap()"     title="Maps">🗺</button>
     <button id="questBtn" onclick="openQuests()"  title="Quests">📜 QUESTS</button>
     <button id="shopBtn"  onclick="openShop()"    title="Shop">🛒</button>
-    <button id="indexBtn" onclick="openIndex()"   title="Hunter's Index">📖</button>
+    <button id="indexBtn"  onclick="openIndex()"   title="Hunter's Index">📖</button>
+    <button id="gambBtn"   onclick="openGamb()"    title="Gambling">🎰 GAMBLE</button>
   </div>
   <button id="pauseBtn" onclick="togglePause()" title="Pause (P)" style="display:none;position:absolute;top:44px;left:50%;transform:translateX(-50%);z-index:10;">⏸</button>
 
@@ -679,6 +715,57 @@ body {
     <div id="indexSubtitle">ALL ANIMALS HUNTED ACROSS ALL MAPS</div>
     <div id="indexMapTabs"></div>
     <div id="indexGrid"></div>
+  </div>
+
+  </div>
+
+  <!-- GAMBLING OVERLAY -->
+  <div id="gambOverlay">
+    <button class="overlay-close" onclick="closeGamb()">✕ CLOSE</button>
+    <h2>🎰 LUCKY SHOT CASINO</h2>
+    <div id="gambCash" style="font-size:13px;color:#a09040;margin-bottom:14px;"></div>
+
+    <!-- SLOT MACHINE -->
+    <div id="slotMachine" style="background:rgba(20,10,4,0.9);border:2px solid rgba(180,100,20,0.6);border-radius:12px;padding:18px 24px;margin-bottom:16px;text-align:center;width:380px;">
+      <div id="slotReels" style="display:flex;justify-content:center;gap:12px;margin-bottom:14px;">
+        <div class="reel-box" id="reel0">🎯</div>
+        <div class="reel-box" id="reel1">🎯</div>
+        <div class="reel-box" id="reel2">🎯</div>
+      </div>
+      <div id="slotResult" style="font-size:15px;color:#f0c060;font-family:'Georgia',serif;min-height:22px;margin-bottom:10px;text-shadow:0 0 10px rgba(240,180,60,0.7);"></div>
+      <!-- Bet buttons -->
+      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;" id="betBtns">
+        <button class="bet-btn" onclick="setBet(100000)">$100K</button>
+        <button class="bet-btn" onclick="setBet(500000)">$500K</button>
+        <button class="bet-btn" onclick="setBet(1000000)">$1M</button>
+        <button class="bet-btn" onclick="setBet(5000000)">$5M</button>
+        <button class="bet-btn" onclick="setBet(10000000)">$10M</button>
+        <button class="bet-btn" onclick="setBet(50000000)">$50M</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:12px;">
+        <span style="color:#a08040;font-size:13px;font-family:Georgia,serif;">Custom:</span>
+        <input id="customBet" type="number" min="1" placeholder="Amount" style="width:110px;background:rgba(20,10,4,0.9);border:1px solid rgba(160,90,20,0.5);color:#f0c060;font-size:13px;font-family:Georgia,serif;padding:4px 8px;border-radius:4px;outline:none;">
+        <button class="bet-btn" onclick="setCustomBet()">Set</button>
+      </div>
+      <div id="betDisplay" style="color:#c09040;font-size:14px;font-family:Georgia,serif;margin-bottom:12px;">Bet: $0</div>
+      <button id="spinBtn" onclick="spinSlots()" style="background:rgba(120,60,8,0.95);border:2px solid rgba(220,140,30,0.8);border-radius:6px;color:#f0c060;font-size:18px;font-family:Georgia,serif;padding:10px 40px;cursor:pointer;letter-spacing:.1em;transition:background .15s;text-shadow:0 0 10px rgba(240,180,60,0.6);">🎰 SPIN</button>
+    </div>
+
+    <!-- WIN CHART -->
+    <div style="background:rgba(15,8,2,0.9);border:1px solid rgba(120,70,15,0.5);border-radius:10px;padding:16px 20px;width:520px;max-width:100%;">
+      <div style="font-size:15px;color:#f0c060;font-family:Georgia,serif;letter-spacing:.12em;margin-bottom:10px;text-align:center;">📊 PAYOUT CHART</div>
+      <table id="payoutTable" style="width:100%;border-collapse:collapse;font-family:Georgia,serif;font-size:13px;">
+        <thead>
+          <tr style="color:#a08040;border-bottom:1px solid rgba(120,70,15,0.4);">
+            <th style="padding:5px 8px;text-align:left;">Combination</th>
+            <th style="padding:5px 8px;text-align:center;">Odds</th>
+            <th style="padding:5px 8px;text-align:right;">Payout</th>
+          </tr>
+        </thead>
+        <tbody id="payoutBody"></tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:#604820;margin-top:10px;font-family:Georgia,serif;font-style:italic;">House always has an edge. Gamble responsibly.</div>
   </div>
 
   <!-- NAME PROMPT -->
@@ -4238,6 +4325,176 @@ function closeIndex(){
   document.getElementById('indexOverlay').classList.remove('open');
   paused=false;
   document.getElementById('pauseBtn').textContent='⏸';
+}
+
+// ── GAMBLING ──────────────────────────────────────────────────
+const SLOTS_SYMBOLS=[
+  {sym:'💀', label:'Skull',   weight:20},
+  {sym:'🦴', label:'Bone',    weight:18},
+  {sym:'🎯', label:'Target',  weight:15},
+  {sym:'🦌', label:'Deer',    weight:12},
+  {sym:'🐺', label:'Wolf',    weight:10},
+  {sym:'🐻', label:'Bear',    weight:8},
+  {sym:'🔥', label:'Fire',    weight:6},
+  {sym:'7️⃣', label:'Lucky 7', weight:4},
+  {sym:'⭐', label:'Star',    weight:2},
+  {sym:'💎', label:'Diamond', weight:1},
+];
+const PAYOUT_TABLE=[
+  {combo:'💀 💀 💀', desc:'Three Skulls',   mult:0,    odds:'~1 in 8',   color:'#ff3030'},
+  {combo:'🦴 🦴 🦴', desc:'Three Bones',    mult:1.5,  odds:'~1 in 9',   color:'#c0c0c0'},
+  {combo:'🎯 🎯 🎯', desc:'Three Targets',  mult:2,    odds:'~1 in 14',  color:'#d4a055'},
+  {combo:'🦌 🦌 🦌', desc:'Three Deer',     mult:3,    odds:'~1 in 24',  color:'#80c060'},
+  {combo:'🐺 🐺 🐺', desc:'Three Wolves',   mult:4,    odds:'~1 in 34',  color:'#a060f0'},
+  {combo:'🐻 🐻 🐻', desc:'Three Bears',    mult:5,    odds:'~1 in 61',  color:'#ff8020'},
+  {combo:'Any pair',  desc:'Two matching',   mult:1,    odds:'~1 in 3',   color:'#908060'},
+  {combo:'🔥 🔥 🔥', desc:'Three Fire',     mult:8,    odds:'~1 in 145', color:'#ff5500'},
+  {combo:'7️⃣ 7️⃣ 7️⃣', desc:'Triple Lucky 7', mult:10,   odds:'~1 in 506', color:'#f0e030'},
+  {combo:'⭐ ⭐ ⭐', desc:'JACKPOT Stars',  mult:50,   odds:'~1 in 3375',color:'#40d8ff'},
+  {combo:'💎 💎 💎', desc:'ULTRA Diamond',  mult:100,  odds:'~1 in 27000',color:'#ff60ff'},
+];
+
+let gambBet=0, gambSpinning=false;
+
+function openGamb(){
+  if(gameState!=='PLAYING'&&gameState!=='RELOADING') return;
+  paused=true;
+  document.getElementById('pauseBtn').textContent='▶';
+  document.getElementById('gambOverlay').classList.add('open');
+  renderGamb();
+}
+function closeGamb(){
+  document.getElementById('gambOverlay').classList.remove('open');
+  paused=false;
+  document.getElementById('pauseBtn').textContent='⏸';
+}
+function renderGamb(){
+  document.getElementById('gambCash').textContent=`Your Cash: $${score.toLocaleString()}`;
+  document.getElementById('betDisplay').textContent=`Bet: $${gambBet.toLocaleString()}`;
+  // Payout table
+  const tbody=document.getElementById('payoutBody');
+  tbody.innerHTML='';
+  PAYOUT_TABLE.forEach(row=>{
+    const tr=document.createElement('tr');
+    tr.style.borderBottom='1px solid rgba(80,45,10,0.3)';
+    const payStr=row.mult===0?'<span style="color:#ff4040">LOSE BET</span>'
+      :row.mult===1?'<span style="color:#c0c060">Break Even</span>'
+      :`<span style="color:#60e060">×${row.mult} (win $${(gambBet*row.mult-gambBet).toLocaleString()||'...'})</span>`;
+    tr.innerHTML=`
+      <td style="padding:5px 8px;color:${row.color};font-size:14px;">${row.combo} <span style="color:#a08040;font-size:11px;">${row.desc}</span></td>
+      <td style="padding:5px 8px;text-align:center;color:#706040;font-size:11px;">${row.odds}</td>
+      <td style="padding:5px 8px;text-align:right;">${payStr}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+function setBet(amt){
+  gambBet=amt;
+  document.querySelectorAll('.bet-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderGamb();
+}
+function setCustomBet(){
+  const val=parseInt(document.getElementById('customBet').value)||0;
+  gambBet=Math.max(0,val);
+  document.querySelectorAll('.bet-btn').forEach(b=>b.classList.remove('active'));
+  renderGamb();
+}
+function randSym(){
+  const total=SLOTS_SYMBOLS.reduce((s,x)=>s+x.weight,0);
+  let r=Math.random()*total;
+  for(const s of SLOTS_SYMBOLS){ r-=s.weight; if(r<=0) return s; }
+  return SLOTS_SYMBOLS[0];
+}
+function spinSlots(){
+  if(gambSpinning) return;
+  if(gambBet<=0){ document.getElementById('slotResult').textContent='Set a bet first!'; return; }
+  if(gambBet>score){ document.getElementById('slotResult').textContent='Not enough cash!'; return; }
+  gambSpinning=true;
+  score-=gambBet;
+  localStorage.setItem('dh_score',score);
+  updateHUD();
+  document.getElementById('slotResult').textContent='';
+  document.getElementById('spinBtn').disabled=true;
+
+  const reels=[null,null,null];
+  const reelEls=[
+    document.getElementById('reel0'),
+    document.getElementById('reel1'),
+    document.getElementById('reel2'),
+  ];
+  // Spin animation — each reel stops 600ms apart
+  reelEls.forEach(r=>r.classList.add('spinning'));
+  const intervals=reelEls.map((rel,i)=>{
+    return setInterval(()=>{ rel.textContent=SLOTS_SYMBOLS[Math.floor(Math.random()*SLOTS_SYMBOLS.length)].sym; },80);
+  });
+  [600,1200,1800].forEach((delay,i)=>{
+    setTimeout(()=>{
+      clearInterval(intervals[i]);
+      reels[i]=randSym();
+      reelEls[i].textContent=reels[i].sym;
+      reelEls[i].classList.remove('spinning');
+      if(i===2) resolveSlots(reels);
+    },delay);
+  });
+}
+function resolveSlots(reels){
+  const [a,b,c]=reels;
+  let mult=0, resultText='', resultColor='#f0c060';
+
+  if(a.sym===b.sym && b.sym===c.sym){
+    // Three of a kind
+    const entry=PAYOUT_TABLE.find(p=>p.combo.includes(a.sym));
+    if(entry){ mult=entry.mult; resultColor=entry.color; }
+    else { mult=2; resultColor='#80c060'; }
+    if(mult===0){
+      resultText='💀 YOU LOSE! 💀';
+      resultColor='#ff3030';
+    } else {
+      resultText=`🎉 ${a.label||a.sym} × 3 — ×${mult} PAYOUT!`;
+    }
+  } else if(a.sym===b.sym || b.sym===c.sym || a.sym===c.sym){
+    mult=1;
+    resultText='Pair! Break even.';
+    resultColor='#c0c060';
+  } else {
+    mult=0;
+    resultText='No match. Better luck next time!';
+    resultColor='#804030';
+  }
+
+  const winAmt=Math.round(gambBet*mult);
+  score+=winAmt;
+  localStorage.setItem('dh_score',score);
+  updateHUD();
+
+  if(mult>1){
+    addFloat(W/2,H*0.3,`+$${(winAmt-gambBet).toLocaleString()} 🎰`,'#f0e030');
+  } else if(mult===0){
+    addFloat(W/2,H*0.3,`-$${gambBet.toLocaleString()} 💀`,'#ff3030');
+  }
+
+  // Flash reel boxes on win
+  const reelEls=[
+    document.getElementById('reel0'),
+    document.getElementById('reel1'),
+    document.getElementById('reel2'),
+  ];
+  if(mult>1){
+    reelEls.forEach(r=>{ r.style.borderColor='#f0c060'; r.style.boxShadow='0 0 18px rgba(240,180,60,0.7)'; });
+    setTimeout(()=>reelEls.forEach(r=>{ r.style.borderColor=''; r.style.boxShadow=''; }),1200);
+  } else if(mult===0){
+    reelEls.forEach(r=>{ r.style.borderColor='#ff3030'; r.style.boxShadow='0 0 18px rgba(255,40,40,0.5)'; });
+    setTimeout(()=>reelEls.forEach(r=>{ r.style.borderColor=''; r.style.boxShadow=''; }),1200);
+  }
+
+  document.getElementById('slotResult').style.color=resultColor;
+  document.getElementById('slotResult').textContent=resultText;
+  document.getElementById('gambCash').textContent=`Your Cash: $${score.toLocaleString()}`;
+  // Refresh payout table win column
+  renderGamb();
+  document.getElementById('spinBtn').disabled=false;
+  gambSpinning=false;
 }
 function renderIndex(){
   // Build map tabs
