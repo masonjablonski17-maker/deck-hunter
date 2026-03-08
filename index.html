@@ -22,13 +22,16 @@ body {
   background:#0a0805;
   display:flex; flex-direction:column;
   align-items:center; justify-content:center;
-  min-height:100vh; overflow-y:scroll;
+  width:100vw; height:100vh;
+  overflow:hidden;
   font-family:'Georgia',serif;
   user-select:none; cursor:crosshair;
+  touch-action:none;
 }
 #wrapper {
   position:relative; width:900px; height:600px;
-  transform-origin:top center;
+  transform-origin:top left;
+  flex-shrink:0;
 }
 #gameCanvas { display:block; border:3px solid #5a3a1a;
   box-shadow:0 0 40px rgba(180,100,20,0.4),0 0 80px rgba(0,0,0,0.8); }
@@ -141,6 +144,32 @@ body {
   transition:background 0.15s;
 }
 #gambBtn:hover { background:rgba(80,40,10,0.9); }
+
+/* ── SCOPE BUTTON (mobile only) ── */
+#scopeBtn {
+  display:none;
+  position:absolute; bottom:60px; right:14px; z-index:15;
+  width:64px; height:64px; border-radius:50%;
+  background:rgba(10,6,2,0.82); border:2px solid rgba(160,90,20,0.7);
+  color:#d4a055; font-size:26px; cursor:pointer;
+  touch-action:none; pointer-events:all;
+  text-shadow:0 0 10px rgba(220,150,50,0.6);
+  box-shadow:0 0 18px rgba(0,0,0,0.6);
+  -webkit-tap-highlight-color:transparent;
+}
+#scopeBtn.active { background:rgba(80,40,8,0.95); border-color:#f0c060; }
+
+/* ── RESPONSIVE: bigger tap targets on small screens ── */
+@media (max-width:600px),(pointer:coarse){
+  .hud-panel { font-size:11px !important; padding:5px 8px !important; }
+  .hud-title  { font-size:13px !important; }
+  #shopBtn,#questBtn,#mapBtn,#indexBtn,#gambBtn,#lbBtn {
+    font-size:12px !important; padding:6px 10px !important;
+    min-height:36px;
+  }
+  #pauseBtn { font-size:18px !important; padding:6px 16px !important; min-height:36px; }
+  #scopeBtn { display:flex; align-items:center; justify-content:center; }
+}
 #gambOverlay {
   display:none; position:absolute; inset:0; z-index:20;
   background:rgba(4,2,1,0.97);
@@ -757,6 +786,7 @@ body {
     <button id="gambBtn"   onclick="openGamb()"    title="Gambling">🎰 GAMBLE</button>
   </div>
   <button id="pauseBtn" onclick="togglePause()" title="Pause (P)" style="display:none;position:absolute;top:44px;left:50%;transform:translateX(-50%);z-index:10;">⏸</button>
+  <button id="scopeBtn" title="Scope (hold)">🔭</button>
 
   <!-- QUESTS OVERLAY -->
   <div id="questOverlay">
@@ -936,6 +966,7 @@ body {
         <button class="admin-btn gold" onclick="adminAddCash(1000000)">+$1,000,000</button>
         <input id="adminCashInput" type="number" placeholder="Custom amount" min="0">
         <button class="admin-btn gold" onclick="adminAddCustomCash()">Add</button>
+        <button class="admin-btn" onclick="adminSetCash()" style="border-color:#60aaff;color:#80ccff">Set To</button>
       </div>
       <div class="admin-row" style="margin-top:8px;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="color:#906030;font-size:11px;font-family:Georgia">Player:</span>
@@ -1332,16 +1363,19 @@ const canvas = document.getElementById('gameCanvas');
 const ctx    = canvas.getContext('2d');
 const W = 900, H = 600;
 
-// Scale wrapper to fit any screen
+// Scale wrapper to fill any screen — phone, tablet, desktop
 function scaleGame(){
   const wrapper = document.getElementById('wrapper');
-  const scaleX = window.innerWidth / 900;
+  const scaleX = window.innerWidth  / 900;
   const scaleY = window.innerHeight / 600;
-  const scale  = Math.min(scaleX, scaleY, 1); // never scale UP, only down
+  const scale  = Math.min(scaleX, scaleY); // fill screen, maintain aspect ratio
   wrapper.style.transform = `scale(${scale})`;
-  // Centre vertically when scaled down
+  // Centre: offset from top-left origin
+  const scaledW = 900 * scale;
   const scaledH = 600 * scale;
-  wrapper.style.marginTop = Math.max(0, (window.innerHeight - scaledH) / 2) + 'px';
+  wrapper.style.left = Math.max(0, (window.innerWidth  - scaledW) / 2) + 'px';
+  wrapper.style.top  = Math.max(0, (window.innerHeight - scaledH) / 2) + 'px';
+  wrapper.style.position = 'absolute';
 }
 scaleGame();
 window.addEventListener('resize', scaleGame);
@@ -6744,26 +6778,45 @@ canvas.addEventListener('mousedown',e=>{
   }
 });
 canvas.addEventListener('mouseup',e=>{ if(e.button===2) scopeActive=false; });
-// Touch support for tablets
+
+// ── TOUCH — full mobile support ──
+let _touchScopeId=null; // second finger ID activates scope
+function _getTouchPos(touch){
+  const r=canvas.getBoundingClientRect();
+  return {
+    x:(touch.clientX-r.left)*(900/r.width),
+    y:(touch.clientY-r.top)*(600/r.height)
+  };
+}
 canvas.addEventListener('touchstart',e=>{
   e.preventDefault(); initAudio();
-  const r=canvas.getBoundingClientRect();
-  const scaleX=900/r.width, scaleY=600/r.height;
-  const t=e.touches[0];
-  mouseX=(t.clientX-r.left)*scaleX;
-  mouseY=(t.clientY-r.top)*scaleY;
-  if(gameState==='MENU'){
-    if(!playerName){ document.getElementById('namePrompt').classList.add('open'); }
-    else { startGame(); }
-  } else if(gameState==='PLAYING'){ fire(); }
+  for(const t of e.changedTouches){
+    if(e.touches.length===1){
+      // First finger — aim
+      const p=_getTouchPos(t); mouseX=p.x; mouseY=p.y;
+      if(gameState==='MENU'){
+        if(!playerName) document.getElementById('namePrompt').classList.add('open');
+        else startGame();
+      } else if(gameState==='PLAYING'){ fire(); }
+    } else if(e.touches.length===2 && _touchScopeId===null){
+      // Second finger — scope
+      _touchScopeId=t.identifier; scopeActive=true;
+    }
+  }
 },{passive:false});
 canvas.addEventListener('touchmove',e=>{
   e.preventDefault();
-  const r=canvas.getBoundingClientRect();
-  const scaleX=900/r.width, scaleY=600/r.height;
-  const t=e.touches[0];
-  mouseX=(t.clientX-r.left)*scaleX;
-  mouseY=(t.clientY-r.top)*scaleY;
+  for(const t of e.changedTouches){
+    if(t.identifier!==_touchScopeId){
+      const p=_getTouchPos(t); mouseX=p.x; mouseY=p.y;
+    }
+  }
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    if(t.identifier===_touchScopeId){ _touchScopeId=null; scopeActive=false; }
+  }
 },{passive:false});
 document.addEventListener('keydown',e=>{
   if(e.key==='z'||e.key==='Z') scopeActive=true;
@@ -7165,6 +7218,17 @@ function adminAddCustomCash(){
   const val=parseInt(document.getElementById('adminCashInput').value)||0;
   if(val>0) adminAddCash(val);
   document.getElementById('adminCashInput').value='';
+}
+function adminSetCash(){
+  const val=parseInt(document.getElementById('adminCashInput').value);
+  if(isNaN(val)||val<0){ alert('Enter an amount first'); return; }
+  score=val;
+  localStorage.setItem('dh_score',score);
+  updateHUD();
+  const shopCash=document.getElementById('shopCash');
+  if(shopCash) shopCash.textContent=`Your Cash: $${score.toLocaleString()}`;
+  document.getElementById('adminCashInput').value='';
+  addFloat(W/2,H*0.45,`💰 CASH SET TO $${val.toLocaleString()}`,'#80ccff');
 }
 function adminLoadPlayerList(){
   const sel=document.getElementById('adminPlayerList');
@@ -7751,8 +7815,17 @@ function equipSkin(id){
   updateHUD();
   renderShop();
 }
-// ── GO ───────────────────────────────────────────────────────
-updateHUD();
+// Scope button (mobile)
+(function(){
+  const btn=document.getElementById('scopeBtn');
+  if(!btn)return;
+  function on(e){ e.preventDefault(); scopeActive=true;  btn.classList.add('active'); }
+  function off(e){ e.preventDefault(); scopeActive=false; btn.classList.remove('active'); }
+  btn.addEventListener('touchstart',on,{passive:false});
+  btn.addEventListener('touchend',off,{passive:false});
+  btn.addEventListener('mousedown',on);
+  btn.addEventListener('mouseup',off);
+})();
 requestAnimationFrame(loop);
 
 
