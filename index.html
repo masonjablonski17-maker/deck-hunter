@@ -1324,7 +1324,7 @@ const MAPS={
     id:'sky', name:'Sky Kingdom', icon:'☁️',
     cost:175000, cashMult:5.8,
     desc:'A floating deck above the clouds. Majestic and deadly winged creatures soar through the endless blue — only the bravest hunters dare come here.',
-    animals:['sparrow','eagle','thunderbird','wyvern','phoenix','stormdrake'],
+    animals:['sparrow','eagle','thunderbird','wyvern','phoenix','stormdrake','celestialserpent'],
   },
   ocean:{
     id:'ocean', name:'Deep Ocean', icon:'🌊',
@@ -2286,6 +2286,7 @@ const TYPES={
   wyvern:     {rarity:'epic',      speed:140,points:6500,  w:100,h:75, body:'#2a5020',limb:'#183010',alt:'#508040'},
   phoenix:    {rarity:'legendary', speed:130,points:12000, w:90,h:80,  body:'#c04010',limb:'#802000',alt:'#ff8020'},
   stormdrake: {rarity:'mythic',    speed:110,points:22000, w:120,h:90, body:'#304060',limb:'#182030',alt:'#6080c0'},
+  celestialserpent:{rarity:'cosmic', speed:85, points:28000, w:340,h:80, body:'#b0c0ff',limb:'#6070c0',alt:'#e0e8ff'},
 };
 
 class Animal{
@@ -2414,6 +2415,7 @@ class Animal{
     if(this.type==='wyvern')      this._wyvern(leg);
     if(this.type==='phoenix')     this._phoenix(leg);
     if(this.type==='stormdrake')  this._stormdrake(leg);
+    if(this.type==='celestialserpent') this._celestialserpent(leg);
 
     ctx.restore();
 
@@ -2461,7 +2463,7 @@ class Animal{
                       viper:28,boar:62,jaguar:60,gorilla:78,titanboa:32,lavabeast:88,
                       crab:42,octopus:65,shark:52,manta:55,anglerfish:74,kraken:105,mosasaurus:280,
                       wraith:74,bonehound:62,phantombat:54,gravelord:100,soulreaper:108,voidleviathan:135,
-                      sparrow:30,eagle:50,thunderbird:70,wyvern:80,phoenix:88,stormdrake:95};
+                      sparrow:30,eagle:50,thunderbird:70,wyvern:80,phoenix:88,stormdrake:95,celestialserpent:90};
       const top=headTops[this.type]||this.h;
       const bob=Math.sin(this.bobT)*(this.type==='rabbit'?3.5:1.8);
       // this.x is always the true screen x position
@@ -4037,7 +4039,155 @@ class Animal{
 
     c.restore();
   }
-  // ── SKY KINGDOM ANIMALS ──────────────────────────────────────
+  _celestialserpent(leg){
+    const c=ctx;
+    const t=Date.now()*0.002;
+    // Cosmic glow beneath
+    const glow=c.createRadialGradient(0,0,0,0,0,120);
+    glow.addColorStop(0,'rgba(180,200,255,0.18)'); glow.addColorStop(1,'rgba(80,100,220,0)');
+    c.fillStyle=glow; c.beginPath(); c.ellipse(0,0,160,40,0,0,Math.PI*2); c.fill();
+
+    // Long serpentine body — series of overlapping segments waving
+    const segs=18;
+    const totalW=this.w*0.85;
+    // Draw segments back to front (tail first)
+    for(let i=segs-1;i>=0;i--){
+      const frac=i/segs;
+      const sx=-totalW*0.5+frac*totalW;
+      const wave=Math.sin(t*1.8+frac*Math.PI*3)*18*(1-frac*0.4);
+      const sy=-22+wave;
+      const r=28*(1-frac*0.55)+8; // tapers toward tail
+      // Cosmic hue shifts along body
+      const hue=(t*40+frac*180)%360;
+      const sg=c.createRadialGradient(sx,sy,0,sx,sy,r);
+      sg.addColorStop(0,`hsla(${hue},80%,85%,0.95)`);
+      sg.addColorStop(0.6,`hsla(${(hue+40)%360},70%,65%,0.9)`);
+      sg.addColorStop(1,`hsla(${(hue+80)%360},60%,45%,0.7)`);
+      c.fillStyle=sg;
+      c.shadowColor=`hsla(${hue},100%,75%,0.6)`; c.shadowBlur=10+Math.sin(t+i)*4;
+      c.beginPath(); c.ellipse(sx,sy,r,r*0.72,Math.sin(t+frac*2)*0.2,0,Math.PI*2); c.fill();
+      // Scale lines
+      if(i%3===0){
+        c.strokeStyle=`hsla(${(hue+120)%360},80%,90%,0.35)`;
+        c.lineWidth=0.8;
+        c.beginPath(); c.arc(sx,sy,r*0.7,0,Math.PI); c.stroke();
+      }
+    }
+    c.shadowBlur=0;
+
+    // Underbelly (lighter strip along bottom of body)
+    c.save(); c.globalAlpha=0.4;
+    for(let i=2;i<segs-1;i++){
+      const frac=i/segs;
+      const sx=-totalW*0.5+frac*totalW;
+      const wave=Math.sin(t*1.8+frac*Math.PI*3)*18*(1-frac*0.4);
+      const sy=-18+wave;
+      const r=18*(1-frac*0.55)+5;
+      c.fillStyle=`rgba(230,240,255,0.6)`;
+      c.beginPath(); c.ellipse(sx,sy+r*0.3,r*0.6,r*0.3,0,0,Math.PI*2); c.fill();
+    }
+    c.restore();
+
+    // Tail tip — forked, glowing
+    const tf=1, tfrac=1;
+    const tailX=-totalW*0.5+tfrac*totalW*0.95;
+    const tailWave=Math.sin(t*1.8+tfrac*Math.PI*3)*18*0.6;
+    const tailY=-22+tailWave;
+    const tailH=(t*40+tfrac*180)%360;
+    c.fillStyle=`hsla(${tailH},80%,80%,0.9)`;
+    c.beginPath(); c.moveTo(tailX,tailY); c.lineTo(tailX-22,tailY-12); c.lineTo(tailX-15,tailY+2); c.fill();
+    c.beginPath(); c.moveTo(tailX,tailY); c.lineTo(tailX-22,tailY+12); c.lineTo(tailX-15,tailY-2); c.fill();
+
+    // Wings — two large feathered wings near front third
+    const wingX=totalW*0.18;
+    const wingWave=Math.sin(t*1.8+0.2*Math.PI*3)*18*0.8;
+    const wingBaseX=-totalW*0.5+wingX;
+    const wingBaseY=-22+wingWave;
+    const flapAmt=Math.sin(t*2.2)*16;
+    const wingHue=(t*40+0.18*180)%360;
+    // Left wing
+    const lwg=c.createLinearGradient(wingBaseX,wingBaseY,wingBaseX-60,wingBaseY-50+flapAmt);
+    lwg.addColorStop(0,`hsla(${wingHue},70%,80%,0.85)`); lwg.addColorStop(1,`hsla(${(wingHue+60)%360},60%,60%,0.4)`);
+    c.fillStyle=lwg;
+    c.beginPath(); c.moveTo(wingBaseX,wingBaseY);
+    c.quadraticCurveTo(wingBaseX-40,-50+wingBaseY+flapAmt,wingBaseX-70,-28+wingBaseY+flapAmt*0.6);
+    c.quadraticCurveTo(wingBaseX-44,-16+wingBaseY,wingBaseX,wingBaseY); c.fill();
+    // Left feather tips
+    c.fillStyle=`hsla(${(wingHue+30)%360},90%,90%,0.7)`;
+    [[-55,-26],[-62,-18],[-58,-10]].forEach(([wx,wy])=>{
+      c.beginPath(); c.moveTo(wingBaseX+wx+flapAmt*0.4,wingBaseY+wy+flapAmt*0.6);
+      c.lineTo(wingBaseX+wx-8+flapAmt*0.4,wingBaseY+wy+8+flapAmt*0.6);
+      c.lineTo(wingBaseX+wx+6+flapAmt*0.4,wingBaseY+wy+4+flapAmt*0.6); c.fill();
+    });
+    // Right wing
+    const rwg=c.createLinearGradient(wingBaseX,wingBaseY,wingBaseX+60,wingBaseY-50+flapAmt);
+    rwg.addColorStop(0,`hsla(${wingHue},70%,80%,0.85)`); rwg.addColorStop(1,`hsla(${(wingHue+60)%360},60%,60%,0.4)`);
+    c.fillStyle=rwg;
+    c.beginPath(); c.moveTo(wingBaseX,wingBaseY);
+    c.quadraticCurveTo(wingBaseX+40,-50+wingBaseY+flapAmt,wingBaseX+70,-28+wingBaseY+flapAmt*0.6);
+    c.quadraticCurveTo(wingBaseX+44,-16+wingBaseY,wingBaseX,wingBaseY); c.fill();
+    c.fillStyle=`hsla(${(wingHue+30)%360},90%,90%,0.7)`;
+    [[55,-26],[62,-18],[58,-10]].forEach(([wx,wy])=>{
+      c.beginPath(); c.moveTo(wingBaseX+wx+flapAmt*0.4,wingBaseY+wy+flapAmt*0.6);
+      c.lineTo(wingBaseX+wx-8+flapAmt*0.4,wingBaseY+wy+8+flapAmt*0.6);
+      c.lineTo(wingBaseX+wx+6+flapAmt*0.4,wingBaseY+wy+4+flapAmt*0.6); c.fill();
+    });
+
+    // Head (front of body, rightmost)
+    const headFrac=0.96;
+    const hx=-totalW*0.5+headFrac*totalW;
+    const hw=Math.sin(t*1.8+headFrac*Math.PI*3)*18*0.6;
+    const hy=-22+hw;
+    const hHue=(t*40+headFrac*180)%360;
+    // Main head ellipse
+    const hg=c.createRadialGradient(hx,hy,0,hx,hy,28);
+    hg.addColorStop(0,`hsla(${hHue},80%,90%,1)`);
+    hg.addColorStop(1,`hsla(${(hHue+60)%360},70%,60%,0.9)`);
+    c.fillStyle=hg; c.shadowColor=`hsla(${hHue},100%,80%,0.8)`; c.shadowBlur=16;
+    c.beginPath(); c.ellipse(hx,hy,30,20,0.1,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    // Glowing mane/crest spikes
+    for(let s=0;s<6;s++){
+      const sa=(-0.4+s*0.18);
+      const sr=28+Math.sin(t*2+s)*4;
+      const sx2=hx+Math.cos(sa-Math.PI/2)*sr*0.5;
+      const sy2=hy+Math.sin(sa-Math.PI/2)*sr*1.2-8;
+      const sh=(t*60+s*60)%360;
+      c.fillStyle=`hsla(${sh},100%,80%,0.85)`;
+      c.shadowColor=`hsla(${sh},100%,70%,1)`; c.shadowBlur=8;
+      c.beginPath(); c.moveTo(sx2,sy2); c.lineTo(sx2-5,sy2-14); c.lineTo(sx2+5,sy2-10); c.closePath(); c.fill();
+    }
+    c.shadowBlur=0;
+    // Snout
+    c.fillStyle=`hsla(${(hHue+30)%360},70%,75%,0.9)`;
+    c.beginPath(); c.moveTo(hx+26,hy); c.lineTo(hx+44,hy+4); c.lineTo(hx+42,hy-6); c.closePath(); c.fill();
+    // Nostrils
+    c.fillStyle=`rgba(80,100,200,0.8)`;
+    c.beginPath(); c.arc(hx+40,hy+2,1.5,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(hx+40,hy-4,1.5,0,Math.PI*2); c.fill();
+    // Eyes — cosmic white with galaxy pupils
+    const eyeH=(t*80)%360;
+    c.fillStyle='white'; c.shadowColor='white'; c.shadowBlur=12;
+    c.beginPath(); c.arc(hx+18,hy-8,5,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    c.fillStyle=`hsla(${eyeH},100%,50%,1)`;
+    c.beginPath(); c.arc(hx+18,hy-8,2.5,0,Math.PI*2); c.fill();
+    c.fillStyle='rgba(0,0,0,0.8)';
+    c.beginPath(); c.arc(hx+19,hy-8,1.2,0,Math.PI*2); c.fill();
+
+    // Star trail particles behind serpent
+    c.save(); c.globalAlpha=0.6;
+    for(let i=0;i<8;i++){
+      const sf=0.05+i*0.08;
+      const ssx=-totalW*0.5+sf*totalW;
+      const ssw=Math.sin(t*1.8+sf*Math.PI*3)*18*(1-sf*0.4);
+      const ssh=(t*60+i*45)%360;
+      const ssa=0.4+0.4*Math.sin(t*3+i);
+      c.fillStyle=`hsla(${ssh},100%,85%,${ssa})`;
+      c.beginPath(); c.arc(ssx-20,(-22+ssw)-5+Math.sin(t*4+i)*4,2+Math.sin(t+i)*1,0,Math.PI*2); c.fill();
+    }
+    c.restore();
+  }
   _sparrow(leg){
     const c=ctx;
     const t=Date.now()*0.008;
