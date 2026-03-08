@@ -1511,6 +1511,7 @@ const GUNS=[
   { id:'anti_material',  name:'Anti-Material',    desc:'Military grade. Even dragons feel this one.',         dmg:60, cost:10000,icon:'⚡', ammoType:'anti_ammo',     ammoName:'Anti-Mat Rounds' },
   { id:'golden_cannon',  name:'Golden Cannon',    desc:'Legendary weapon. One shot, one kill on most prey.',  dmg:120,cost:30000,icon:'🏆', ammoType:'cannon_ammo',   ammoName:'Cannon Shells'   },
   { id:'void_rifle',     name:'Void Rifle',        desc:'Forged from the darkness between stars. One-shots common prey, tears through all.',  dmg:45, cost:75000,icon:'🌌', ammoType:'void_ammo', ammoName:'Void Rounds' },
+  { id:'gods_wrath',    name:"God's Wrath",        desc:'A weapon of divine destruction. Forged at the center of the universe. Even secret animals tremble.',  dmg:100, cost:500000, icon:'⚡🔥', ammoType:'gods_ammo', ammoName:'Divine Shells' },
   { id:'admin_gun',      name:'Admin Obliterator',desc:'⚠ ADMIN ONLY. Infinite ammo. Obliterates anything in one shot.', dmg:9999, cost:0, icon:'☠️', ammoType:'rifle_ammo', ammoName:'Rifle Rounds', adminOnly:true },
 ];
 const AMMO_PACKS=[
@@ -1520,14 +1521,15 @@ const AMMO_PACKS=[
   { type:'elephant_ammo', name:'Elephant Rounds',  icon:'🐘', packSize:12, cost:380,  desc:'Massive rounds for the Elephant Gun.' },
   { type:'anti_ammo',     name:'Anti-Mat Rounds',  icon:'⚡', packSize:10, cost:700,  desc:'Military-grade rounds for the Anti-Material.' },
   { type:'cannon_ammo',   name:'Cannon Shells',    icon:'🏆', packSize:8,  cost:1500, desc:'Gold-tipped shells for the Golden Cannon.' },
-  { type:'void_ammo',     name:'Void Rounds',      icon:'🌌', packSize:5,  cost:8000, desc:'Crystallised dark matter. Extremely rare and expensive.' },
+  { type:'void_ammo',     name:'Void Rounds',      icon:'🌌', packSize:5,  cost:8000,  desc:'Crystallised dark matter. Extremely rare and expensive.' },
+  { type:'gods_ammo',    name:'Divine Shells',    icon:'⚡🔥', packSize:3, cost:50000, desc:'Blessed by the gods themselves. Devastating beyond measure.' },
 ];
 let currentGunId = localStorage.getItem('dh_gun') || 'hunting_rifle';
 let ownedGuns    = JSON.parse(localStorage.getItem('dh_owned') || '["hunting_rifle"]');
 
 function currentGun(){ return GUNS.find(g=>g.id===currentGunId); }
 // ── AMMO ─────────────────────────────────────────────────────
-const DEFAULT_AMMO={ rifle_ammo:50, heavy_ammo:0, magnum_ammo:0, elephant_ammo:0, anti_ammo:0, cannon_ammo:0, void_ammo:0 };
+const DEFAULT_AMMO={ rifle_ammo:50, heavy_ammo:0, magnum_ammo:0, elephant_ammo:0, anti_ammo:0, cannon_ammo:0, void_ammo:0, gods_ammo:0 };
 let ammo=JSON.parse(localStorage.getItem('dh_ammo')||JSON.stringify(DEFAULT_AMMO));
 // Fill in any missing keys (for existing saves)
 for(const k of Object.keys(DEFAULT_AMMO)){ if(ammo[k]===undefined) ammo[k]=0; }
