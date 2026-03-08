@@ -1008,6 +1008,15 @@ body {
         <button class="admin-btn" onclick="adminFillIndex()" style="border-color:#4080a0;color:#60a0c0">📖 Fill My Index</button>
         <button class="admin-btn" id="adminGunBtn" onclick="adminUnlockGun()" style="border-color:#aa0000;color:#ff4040">☠️ Unlock Admin Gun</button>
       </div>
+      <div class="admin-row" style="align-items:center;gap:8px;margin-top:6px">
+        <span style="color:#ff6060;font-size:11px;font-family:Georgia">Reset player to $0:</span>
+        <input id="adminResetNameInput" type="text" placeholder="Player name"
+          style="width:140px;background:rgba(20,12,4,0.9);border:1px solid rgba(255,60,60,0.5);
+          border-radius:4px;color:#f0c060;font-size:12px;font-family:Georgia,serif;
+          padding:4px 7px;outline:none">
+        <button class="admin-btn" onclick="adminResetPlayerCash()" style="border-color:#ff4040;color:#ff6666">💀 Reset to $0</button>
+      </div>
+      </div>
     </div>
 
     <div class="admin-section">
@@ -1493,7 +1502,7 @@ const MAPS={
     id:'jungle', name:'Ancient Jungle', icon:'🌿',
     cost:300000, cashMult:9.0,
     desc:'A primordial jungle lost to time. Creatures of unimaginable power roam these canopies. Something ancient lurks in the shadows — a secret older than the hunt itself.',
-    animals:['parrot','monkey','panther','gorillaking','serpentgod','jungleroc','tiger'],
+    animals:['parrot','monkey','panther','shadowpanther','gorillaking','serpentgod','jungleroc','tiger'],
   },
 };
 let currentMapId = localStorage.getItem('dh_map') || 'forest';
@@ -2607,7 +2616,8 @@ const TYPES={
   parrot:      {rarity:'common',    speed:160,points:800,   w:32,h:40,  body:'#22bb22',limb:'#116611',alt:'#ff4400'},
   monkey:      {rarity:'uncommon',  speed:140,points:1800,  w:44,h:56,  body:'#8b5e3c',limb:'#5a3a1a',alt:'#c08040'},
   panther:     {rarity:'rare',      speed:155,points:4000,  w:70,h:58,  body:'#1a1a1a',limb:'#0d0d0d',alt:'#2a2a2a'},
-  gorillaking: {rarity:'epic',      speed:60, points:9000,  w:110,h:100,body:'#2a2010',limb:'#180c04',alt:'#3c2c14'},
+  gorillaking: {rarity:'cosmic',    speed:55, points:45000, w:120,h:110,body:'#1a1040',limb:'#0d0820',alt:'#2a1a60'},
+  shadowpanther:{rarity:'mythic',   speed:195,points:28000, w:82,h:65,  body:'#0d0010',limb:'#070008',alt:'#1a0025'},
   serpentgod:  {rarity:'legendary', speed:110,points:18000, w:300,h:55, body:'#1a4a1a',limb:'#0d2a0d',alt:'#2a6a2a'},
   jungleroc:   {rarity:'mythic',    speed:180,points:38000, w:130,h:100,body:'#4a3010',limb:'#2a1808',alt:'#6a4820'},
   tiger:{rarity:'secret',    speed:88, points:120000,w:260,h:140,body:'#e86000',limb:'#180800',alt:'#f08000'},
@@ -2763,6 +2773,7 @@ class Animal{
     if(this.type==='parrot')       this._parrot(leg);
     if(this.type==='monkey')       this._monkey(leg);
     if(this.type==='panther')      this._panther(leg);
+    if(this.type==='shadowpanther')this._shadowpanther(leg);
     if(this.type==='gorillaking')  this._gorillaking(leg);
     if(this.type==='serpentgod')   this._serpentgod(leg);
     if(this.type==='jungleroc')    this._jungleroc(leg);
@@ -2829,7 +2840,7 @@ class Animal{
                       crab:42,octopus:65,shark:52,manta:55,anglerfish:74,kraken:105,mosasaurus:280,
                       wraith:74,bonehound:62,phantombat:54,gravelord:100,soulreaper:108,voidleviathan:135,
                       sparrow:30,eagle:50,thunderbird:70,wyvern:80,phoenix:88,stormdrake:95,celestialserpent:90,
-                      parrot:44,monkey:60,panther:62,gorillaking:105,serpentgod:40,jungleroc:100,tiger:145};
+                      parrot:44,monkey:60,panther:62,shadowpanther:68,gorillaking:115,serpentgod:40,jungleroc:100,tiger:145};
       const top=headTops[this.type]||this.h;
       const bob=Math.sin(this.bobT)*(this.type==='rabbit'?3.5:1.8);
       // this.x is always the true screen x position
@@ -2858,6 +2869,18 @@ class Animal{
       ctx.font='bold 10px Georgia';
       ctx.textAlign='center';
       ctx.fillText(`${this.hp}/${this.maxHp}`, bx, barY-3);
+
+      // Stack labels above the HP text, starting at barY-17 and going up
+      let labelY = barY - 17;
+
+      // Piebald label (drawn first = closest to bar)
+      if(this.piebald){
+        ctx.font='bold 11px Georgia';
+        ctx.fillStyle='#f0c878';
+        ctx.shadowColor='rgba(255,200,100,0.8)'; ctx.shadowBlur=10;
+        ctx.fillText('◈ PIEBALD ◈', bx, labelY);
+        labelY -= 15;
+      }
       // Albino label
       if(this.albino){
         const at=Date.now()*0.002;
@@ -2865,7 +2888,8 @@ class Animal{
         ctx.font='bold 11px Georgia';
         ctx.fillStyle=`hsl(${ah},100%,78%)`;
         ctx.shadowColor=`hsl(${ah},100%,70%)`; ctx.shadowBlur=10;
-        ctx.fillText('✦ ALBINO ✦', bx, barY-16);
+        ctx.fillText('✦ ALBINO ✦', bx, labelY);
+        labelY -= 15;
       }
       // Melanistic label
       if(this.melanistic){
@@ -2874,27 +2898,22 @@ class Animal{
         ctx.font='bold 11px Georgia';
         ctx.fillStyle=`hsl(${mh},70%,55%)`;
         ctx.shadowColor=`hsl(${mh},80%,40%)`; ctx.shadowBlur=12;
-        ctx.fillText('◆ MELANISTIC ◆', bx, barY-16);
-      }
-      // Piebald label
-      if(this.piebald){
-        ctx.font='bold 11px Georgia';
-        ctx.fillStyle='#f0c878';
-        ctx.shadowColor='rgba(255,200,100,0.8)'; ctx.shadowBlur=10;
-        ctx.fillText('◈ PIEBALD ◈', bx, barY-16);
+        ctx.fillText('◆ MELANISTIC ◆', bx, labelY);
+        labelY -= 15;
       }
       // Secret label — shows ??? until killed
       if(this.rarity==='secret'){
         const st=Date.now()*0.003;
         const sh=Math.floor((st*50)%360);
+        ctx.font='10px Georgia';
+        ctx.fillStyle='rgba(255,200,80,0.8)';
+        ctx.shadowColor='rgba(200,150,40,0.8)'; ctx.shadowBlur=6;
+        ctx.fillText('??? SECRET ???', bx, labelY);
+        labelY -= 15;
         ctx.font='bold 13px Georgia';
         ctx.fillStyle=`hsl(${sh},100%,65%)`;
         ctx.shadowColor=`hsl(${sh},100%,55%)`; ctx.shadowBlur=16;
-        ctx.fillText('⚠ TIGER ⚠', bx, barY-20);
-        ctx.font='10px Georgia';
-        ctx.fillStyle='rgba(255,200,80,0.8)';
-        ctx.shadowBlur=6;
-        ctx.fillText('??? SECRET ???', bx, barY-8);
+        ctx.fillText('⚠ TIGER ⚠', bx, labelY);
       }
       ctx.restore();
     }
@@ -4845,44 +4864,223 @@ class Animal{
   }
 
   _gorillaking(leg){
-    const c=ctx;
-    c.fillStyle='rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(0,5,48,10,0,0,Math.PI*2); c.fill();
+    const c=ctx, t=Date.now()*0.002;
+    // Cosmic cycling colors
+    const hue=Math.floor((t*40)%360);
+    const cosmicCol=`hsl(${hue},100%,65%)`;
+    const cosmicGlow=`hsl(${hue},100%,55%)`;
+
+    // Ground cosmic aura pulse
+    const auraPulse=0.18+0.1*Math.sin(t*3);
+    c.fillStyle=`hsla(${hue},100%,60%,${auraPulse})`;
+    c.beginPath(); c.ellipse(0,6,62,14,0,0,Math.PI*2); c.fill();
+
+    // Leg energy lines (cosmic shimmer behind legs)
+    c.strokeStyle=`hsla(${hue},100%,70%,0.4)`; c.lineWidth=3; c.lineCap='round';
+    [[-26,leg*.3],[-8,-leg*.3],[10,leg*.35],[28,-leg*.35]].forEach(([ox,sw])=>{
+      c.beginPath(); c.moveTo(ox,-18); c.lineTo(ox+sw+4,8); c.stroke();
+    });
+
     // Massive legs
     c.strokeStyle=this.limb; c.lineWidth=16; c.lineCap='round';
     [[-26,leg*.3],[-8,-leg*.3],[10,leg*.35],[28,-leg*.35]].forEach(([ox,sw])=>{
       c.beginPath(); c.moveTo(ox,-18); c.lineTo(ox+sw,6); c.stroke();
     });
-    // Thick body
-    c.fillStyle=this.body; c.beginPath(); c.ellipse(0,-34,44,30,0,0,Math.PI*2); c.fill();
-    // Chest thump patch
-    c.fillStyle='rgba(80,50,20,0.4)'; c.beginPath(); c.ellipse(0,-32,22,18,0,0,Math.PI*2); c.fill();
-    // Huge arms
-    c.strokeStyle=this.limb; c.lineWidth=14; c.lineCap='round';
-    c.beginPath(); c.moveTo(-38,-30); c.lineTo(-54,-12); c.stroke();
-    c.beginPath(); c.moveTo(38,-30); c.lineTo(54,-12); c.stroke();
-    // Giant hands
-    c.fillStyle=this.limb; c.beginPath(); c.arc(-54,-10,10,0,Math.PI*2); c.fill();
-    c.fillStyle=this.limb; c.beginPath(); c.arc(54,-10,10,0,Math.PI*2); c.fill();
-    // Head — enormous
-    c.fillStyle=this.alt; c.beginPath(); c.ellipse(0,-68,28,26,0,0,Math.PI*2); c.fill();
-    // Brow ridge
-    c.fillStyle=this.limb; c.beginPath(); c.ellipse(0,-72,30,10,0,0,Math.PI); c.fill();
-    // Nose
-    c.fillStyle='#100806'; c.beginPath(); c.ellipse(0,-66,9,7,0,0,Math.PI*2); c.fill();
-    c.fillStyle='#1a0a04'; c.beginPath(); c.arc(-4,-66,3,0,Math.PI*2); c.fill();
-    c.beginPath(); c.arc(4,-66,3,0,Math.PI*2); c.fill();
-    // Eyes — deep and intimidating
-    c.fillStyle='#cc4400'; c.shadowColor='#ff2200'; c.shadowBlur=10;
-    c.beginPath(); c.arc(-10,-74,4,0,Math.PI*2); c.fill();
-    c.beginPath(); c.arc(10,-74,4,0,Math.PI*2); c.fill();
+
+    // Body — deep cosmic purple-black
+    const bodyGrad=c.createRadialGradient(0,-34,4,0,-34,44);
+    bodyGrad.addColorStop(0,`hsl(${hue+30},60%,18%)`);
+    bodyGrad.addColorStop(1,'#080410');
+    c.fillStyle=bodyGrad; c.beginPath(); c.ellipse(0,-34,46,32,0,0,Math.PI*2); c.fill();
+
+    // Cosmic chest nebula swirl
+    const nebHue=(hue+180)%360;
+    c.save(); c.globalAlpha=0.35;
+    c.fillStyle=`hsl(${nebHue},100%,60%)`;
+    c.beginPath(); c.ellipse(0,-34,22,16,t*0.5,0,Math.PI*2); c.fill();
+    c.globalAlpha=0.2;
+    c.fillStyle=`hsl(${hue},100%,70%)`;
+    c.beginPath(); c.ellipse(4,-30,14,10,-t*0.7,0,Math.PI*2); c.fill();
+    c.restore();
+
+    // Glowing star particles on body
+    for(let i=0;i<6;i++){
+      const ang=t*1.5+i*(Math.PI*2/6);
+      const r=26+Math.sin(t*2+i)*6;
+      const sx=Math.cos(ang)*r, sy=-34+Math.sin(ang)*r*0.55;
+      const sh=Math.floor((hue+i*60)%360);
+      c.fillStyle=`hsla(${sh},100%,82%,${0.5+0.4*Math.sin(t*3+i)})`;
+      c.beginPath(); c.arc(sx,sy,1.8,0,Math.PI*2); c.fill();
+    }
+
+    // Huge cosmic arms
+    c.strokeStyle=`hsl(${hue+20},50%,14%)`; c.lineWidth=14; c.lineCap='round';
+    c.beginPath(); c.moveTo(-40,-30); c.lineTo(-56,-10); c.stroke();
+    c.beginPath(); c.moveTo(40,-30); c.lineTo(56,-10); c.stroke();
+    // Cosmic energy veins on arms
+    c.strokeStyle=`hsla(${hue},100%,65%,0.6)`; c.lineWidth=2;
+    c.beginPath(); c.moveTo(-40,-28); c.lineTo(-55,-10); c.stroke();
+    c.beginPath(); c.moveTo(40,-28); c.lineTo(55,-10); c.stroke();
+    // Giant energy hands
+    c.shadowColor=cosmicGlow; c.shadowBlur=14;
+    c.fillStyle=`hsl(${hue},70%,20%)`; c.beginPath(); c.arc(-56,-8,11,0,Math.PI*2); c.fill();
+    c.fillStyle=`hsl(${hue},70%,20%)`; c.beginPath(); c.arc(56,-8,11,0,Math.PI*2); c.fill();
     c.shadowBlur=0;
-    c.fillStyle='#0a0404'; c.beginPath(); c.arc(-10,-74,2,0,Math.PI*2); c.fill();
-    c.beginPath(); c.arc(10,-74,2,0,Math.PI*2); c.fill();
-    // Crown of jungle leaves
-    c.fillStyle='#1a6610';
-    [[-22,-90],[-12,-96],[-2,-100],[8,-96],[18,-90]].forEach(([lx,ly])=>{
-      c.beginPath(); c.moveTo(lx,ly); c.lineTo(lx-8,ly+12); c.lineTo(lx+8,ly+12); c.closePath(); c.fill();
+    // Knuckle glow
+    c.fillStyle=cosmicCol; c.globalAlpha=0.6;
+    c.beginPath(); c.arc(-56,-8,5,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(56,-8,5,0,Math.PI*2); c.fill();
+    c.globalAlpha=1;
+
+    // Head — enormous cosmic skull
+    const headGrad=c.createRadialGradient(0,-70,5,0,-70,30);
+    headGrad.addColorStop(0,`hsl(${hue+20},50%,16%)`);
+    headGrad.addColorStop(1,'#060310');
+    c.fillStyle=headGrad; c.beginPath(); c.ellipse(0,-70,30,28,0,0,Math.PI*2); c.fill();
+
+    // Brow ridge
+    c.fillStyle=`hsl(${hue},40%,10%)`; c.beginPath(); c.ellipse(0,-74,32,10,0,0,Math.PI); c.fill();
+
+    // Cosmic nose
+    c.fillStyle='#08040c'; c.beginPath(); c.ellipse(0,-68,9,7,0,0,Math.PI*2); c.fill();
+    c.fillStyle='#120820'; c.beginPath(); c.arc(-4,-68,3,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(4,-68,3,0,Math.PI*2); c.fill();
+
+    // Eyes — blazing cosmic white with galaxy swirl pupils
+    c.shadowColor=cosmicCol; c.shadowBlur=20;
+    c.fillStyle='#ffffff'; c.beginPath(); c.arc(-11,-76,5.5,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(11,-76,5.5,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    // Galaxy pupils
+    const pupHue=(hue+180)%360;
+    c.fillStyle=`hsl(${pupHue},100%,40%)`; c.beginPath(); c.arc(-11,-76,3,0,Math.PI*2); c.fill();
+    c.fillStyle=`hsl(${pupHue},100%,40%)`; c.beginPath(); c.arc(11,-76,3,0,Math.PI*2); c.fill();
+    c.fillStyle='#000'; c.beginPath(); c.arc(-11,-76,1.5,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(11,-76,1.5,0,Math.PI*2); c.fill();
+
+    // Cosmic crown — orbiting stars instead of leaves
+    for(let i=0;i<7;i++){
+      const ang=-Math.PI/2 + (i/7)*Math.PI + t*(i%2===0?0.8:-0.6);
+      const cr=28+Math.sin(t*2+i)*4;
+      const cx2=Math.cos(ang)*cr, cy2=-70+Math.sin(ang)*cr*0.4-18;
+      const starHue=Math.floor((hue+i*50)%360);
+      c.shadowColor=`hsl(${starHue},100%,70%)`; c.shadowBlur=8;
+      c.fillStyle=`hsl(${starHue},100%,80%)`;
+      c.beginPath(); c.arc(cx2,cy2,2.5+Math.sin(t*4+i),0,Math.PI*2); c.fill();
+    }
+    c.shadowBlur=0;
+
+    // Crown ring glow
+    c.strokeStyle=`hsla(${hue},100%,65%,0.5)`; c.lineWidth=1.5;
+    c.beginPath(); c.ellipse(0,-88,30,8,0,0,Math.PI*2); c.stroke();
+  }
+
+  _shadowpanther(leg){
+    const c=ctx, t=Date.now()*0.003;
+
+    // Shadow void beneath — drips downward
+    c.fillStyle='rgba(30,0,50,0.35)';
+    c.beginPath(); c.ellipse(0,4,32,8,0,0,Math.PI*2); c.fill();
+    // Shadow tendrils on ground
+    for(let i=0;i<5;i++){
+      const ang=Math.PI+(-0.6+i*0.3);
+      const dr=18+Math.sin(t*2+i)*6;
+      c.strokeStyle=`rgba(80,0,120,${0.3+0.2*Math.sin(t*3+i)})`;
+      c.lineWidth=2; c.lineCap='round';
+      c.beginPath(); c.moveTo(0,4); c.lineTo(Math.cos(ang)*dr, 4+Math.sin(ang)*dr*0.3); c.stroke();
+    }
+
+    // Legs — barely visible, shadow-dark with purple edge glow
+    c.strokeStyle='#07000f'; c.lineWidth=6; c.lineCap='round';
+    [[-14,leg*.5],[-4,-leg*.5],[8,leg*.6],[18,-leg*.6]].forEach(([ox,sw])=>{
+      c.beginPath(); c.moveTo(ox,-14); c.lineTo(ox+sw,3); c.stroke();
     });
+    // Leg void shimmer
+    c.strokeStyle='rgba(160,0,255,0.25)'; c.lineWidth=2;
+    [[-14,leg*.5],[-4,-leg*.5],[8,leg*.6],[18,-leg*.6]].forEach(([ox,sw])=>{
+      c.beginPath(); c.moveTo(ox,-14); c.lineTo(ox+sw,3); c.stroke();
+    });
+
+    // Tail — long, wispy void tail that dissolves at tip
+    c.save();
+    const tailGrad=c.createLinearGradient(-18,-20,-50,5);
+    tailGrad.addColorStop(0,'rgba(20,0,35,0.9)');
+    tailGrad.addColorStop(1,'rgba(80,0,140,0)');
+    c.strokeStyle=tailGrad; c.lineWidth=7; c.lineCap='round';
+    c.beginPath(); c.moveTo(-18,-18); c.quadraticCurveTo(-42,-8,-50,6+Math.sin(t*2)*4); c.stroke();
+    c.restore();
+
+    // Body — ultra-dark with void shimmer
+    const bodyGrad=c.createRadialGradient(0,-24,2,0,-24,30);
+    bodyGrad.addColorStop(0,'#1a0030');
+    bodyGrad.addColorStop(0.6,'#0a0018');
+    bodyGrad.addColorStop(1,'#050010');
+    c.fillStyle=bodyGrad; c.beginPath(); c.ellipse(0,-24,28,16,0.08,0,Math.PI*2); c.fill();
+
+    // Void energy ribbons across body (animated)
+    c.save(); c.globalAlpha=0.35;
+    for(let i=0;i<3;i++){
+      const ribbonHue=270+i*20;
+      c.strokeStyle=`hsl(${ribbonHue},100%,60%)`;
+      c.lineWidth=1.2; c.lineCap='round';
+      c.beginPath();
+      c.moveTo(-26,-24+i*4);
+      c.quadraticCurveTo(0,-28+Math.sin(t*2+i)*4+i*4, 26,-24+i*4);
+      c.stroke();
+    }
+    c.restore();
+
+    // Spots — barely-there darker patches that flicker in/out
+    const spotAlpha=0.15+0.12*Math.sin(t*1.5);
+    c.fillStyle=`rgba(60,0,100,${spotAlpha})`;
+    [[8,-28,4,3],[0,-20,3,2.5],[-10,-26,3.5,2.5],[14,-18,3,2],[3,-34,2.5,2]].forEach(([sx,sy,rw,rh])=>{
+      c.beginPath(); c.ellipse(sx,sy,rw,rh,0,0,Math.PI*2); c.fill();
+    });
+
+    // Neck
+    c.fillStyle='#0a0018'; c.beginPath(); c.ellipse(16,-36,9,12,0.2,0,Math.PI*2); c.fill();
+
+    // Head
+    const headGrad=c.createRadialGradient(26,-46,2,26,-46,14);
+    headGrad.addColorStop(0,'#1a0030'); headGrad.addColorStop(1,'#060010');
+    c.fillStyle=headGrad; c.beginPath(); c.ellipse(26,-46,14,11,0.1,0,Math.PI*2); c.fill();
+
+    // Ears — pointed with void glow inner
+    c.fillStyle='#0d0020';
+    c.beginPath(); c.moveTo(16,-53); c.lineTo(10,-66); c.lineTo(22,-58); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(24,-54); c.lineTo(22,-68); c.lineTo(32,-57); c.closePath(); c.fill();
+    // Inner ear void glow
+    c.fillStyle='rgba(160,0,255,0.4)';
+    c.beginPath(); c.moveTo(17,-54); c.lineTo(12,-63); c.lineTo(21,-58); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(25,-55); c.lineTo(23,-65); c.lineTo(31,-58); c.closePath(); c.fill();
+
+    // Snout
+    c.fillStyle='#090014';
+    c.beginPath(); c.moveTo(32,-46); c.lineTo(42,-43); c.lineTo(40,-50); c.closePath(); c.fill();
+    // Whiskers — glowing void purple
+    c.strokeStyle='rgba(200,100,255,0.6)'; c.lineWidth=0.8;
+    [[-2,0],[0,2],[2,-1]].forEach(([dy1,dy2])=>{
+      c.beginPath(); c.moveTo(34,-47+dy1); c.lineTo(46,-46+dy2); c.stroke();
+    });
+
+    // Eyes — two blazing voids, deep magenta/purple
+    const eyePulse=0.7+0.3*Math.sin(t*4);
+    c.shadowColor=`rgba(200,0,255,${eyePulse})`; c.shadowBlur=18;
+    c.fillStyle=`rgba(180,0,255,${eyePulse})`; c.beginPath(); c.arc(29,-49,4,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    // Slit pupil
+    c.fillStyle='#000'; c.beginPath();
+    c.ellipse(29,-49,1.2,3.5,0,0,Math.PI*2); c.fill();
+    // Catchlight
+    c.fillStyle='rgba(255,200,255,0.6)'; c.beginPath(); c.arc(27.5,-50.5,1,0,Math.PI*2); c.fill();
+
+    // Void particle trail (3 fading orbs behind)
+    for(let i=1;i<=3;i++){
+      const trailAlpha=(0.25-i*0.07)*eyePulse;
+      const trailX=-i*12; const trailY=-24+Math.sin(t*2+i)*3;
+      c.fillStyle=`rgba(120,0,200,${trailAlpha})`;
+      c.beginPath(); c.arc(trailX,trailY,8-i*1.5,0,Math.PI*2); c.fill();
+    }
   }
 
   _serpentgod(leg){
@@ -6059,16 +6257,6 @@ const PAYOUT_TABLE=[
 ];
 
 let gambBet=0, gambSpinning=false;
-// Silent pity — no UI, just quietly kicks in after bad luck
-let pityLosses=0, pityMoneyLost=0;
-let consolationSpins=0;
-let consolationTarget=5+Math.floor(Math.random()*4); // 5–8, rerolled each time
-const PITY_TIERS=[
-  [20, 10000000,  '🔥','🔥','🔥', 'Fire',    8  ],
-  [30, 25000000,  '7️⃣','7️⃣','7️⃣', 'Lucky 7', 10 ],
-  [999, 100000000, '⭐','⭐','⭐', 'Jackpot', 50 ],
-  [999, 500000000, '💎','💎','💎', 'Diamond', 100],
-];
 
 function openGamb(){
   if(gameState!=='PLAYING'&&gameState!=='RELOADING') return;
@@ -6116,13 +6304,8 @@ function setCustomBet(){
 }
 function randSym(){
   const luck = casinoLuckActive && Date.now() < casinoLuckExpiry;
-  // Aggressively boost 🦌 and 🎯 as consolationSpins approaches consolationTarget
-  // At target: boost = 200, making them ~10x more likely than base
-  const progress = Math.min(consolationSpins / consolationTarget, 1);
-  const boost = Math.floor(progress * progress * 200);
   const syms = SLOTS_SYMBOLS.map(s=>{
-    let w = (luck && s.sym!=='💀') ? s.weight*2 : s.weight;
-    if(s.sym==='🦌' || s.sym==='🎯') w += boost;
+    const w = (luck && s.sym!=='💀') ? s.weight*2 : s.weight;
     return {...s, w};
   });
   const total=syms.reduce((s,x)=>s+x.w,0);
@@ -6141,12 +6324,6 @@ function spinSlots(){
   document.getElementById('slotResult').textContent='';
   document.getElementById('spinBtn').disabled=true;
 
-  // Silently check pity — pick best tier player qualifies for
-  let pityTier=null;
-  for(let i=PITY_TIERS.length-1;i>=0;i--){
-    if(pityLosses>=PITY_TIERS[i][0]||pityMoneyLost>=PITY_TIERS[i][1]){ pityTier=PITY_TIERS[i]; break; }
-  }
-
   const reels=[null,null,null];
   const reelEls=[
     document.getElementById('reel0'),
@@ -6160,24 +6337,19 @@ function spinSlots(){
   [600,1200,1800].forEach((delay,i)=>{
     setTimeout(()=>{
       clearInterval(intervals[i]);
-      reels[i]=pityTier ? {sym:pityTier[2+i],label:pityTier[5]} : randSym();
+      reels[i]=randSym();
       reelEls[i].textContent=reels[i].sym;
       reelEls[i].classList.remove('spinning');
-      if(i===2) resolveSlots(reels, pityTier);
+      if(i===2) resolveSlots(reels);
     },delay);
   });
 }
-function resolveSlots(reels, pityTier){
+function resolveSlots(reels){
   const [a,b,c]=reels;
   let mult=0, resultText='', resultColor='#f0c060';
   let isRealWin=false;
 
-  if(pityTier){
-    mult=pityTier[6];
-    resultText=`🎉 ${pityTier[5]} × 3 — ×${mult} PAYOUT!`;
-    resultColor='#f0c060';
-    isRealWin=true;
-  } else if(a.sym===b.sym && b.sym===c.sym){
+  if(a.sym===b.sym && b.sym===c.sym){
     const entry=PAYOUT_TABLE.find(p=>p.combo.includes(a.sym));
     if(entry){ mult=entry.mult; resultColor=entry.color; }
     else { mult=2; resultColor='#80c060'; }
@@ -6192,12 +6364,6 @@ function resolveSlots(reels, pityTier){
   } else {
     mult=0; resultText='No match. Better luck next time!'; resultColor='#804030';
   }
-
-  // Update silent pity counters
-  if(isRealWin){ pityLosses=0; pityMoneyLost=0; }
-  else { pityLosses++; if(mult===0) pityMoneyLost+=gambBet; }
-  // consolationSpins always increments — only resets when the consolation fires
-  consolationSpins++;
 
 
 
@@ -7359,6 +7525,28 @@ function adminNerfPlayer(){
     });
     if(found) addFloat(W/2,H*0.38,`🔨 ${target} nerfed to $${newCash.toLocaleString()}`,'#ffaa60');
     else addFloat(W/2,H*0.38,`Player "${target}" not found`,'#ff6060');
+  });
+}
+function adminResetPlayerCash(){
+  const input=document.getElementById('adminResetNameInput');
+  const target=(input.value||'').trim();
+  if(!target){ addFloat(W/2,H*0.38,'Enter a player name first','#ff6060'); return; }
+  db.ref('leaderboard').once('value', snap=>{
+    let found=false;
+    snap.forEach(child=>{
+      const v=child.val();
+      if(v && v.name && v.name.toLowerCase()===target.toLowerCase()){
+        child.ref.set({ name: v.name, cash: 0 });
+        db.ref('scoreCaps/'+child.key).remove();
+        found=true;
+      }
+    });
+    if(found){
+      addFloat(W/2,H*0.38,`💀 ${target} reset to $0`,'#ff4040');
+      input.value='';
+    } else {
+      addFloat(W/2,H*0.38,`Player "${target}" not found on leaderboard`,'#ff6060');
+    }
   });
 }
 function adminClearAnimals(){
