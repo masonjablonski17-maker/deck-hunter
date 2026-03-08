@@ -1504,12 +1504,12 @@ function currentMap(){ return MAPS[currentMapId]; }
 
 // ── GUNS ─────────────────────────────────────────────────────
 const GUNS=[
-  { id:'hunting_rifle',  name:'Hunting Rifle',   desc:'Your trusty starter rifle. Reliable but slow.',       dmg:5,  cost:0,    icon:'🔫', ammoType:'rifle_ammo',    ammoName:'Rifle Rounds'    },
-  { id:'heavy_rifle',    name:'Heavy Rifle',      desc:'Hits harder. Two shots feel like three.',             dmg:12, cost:500,  icon:'🎯', ammoType:'heavy_ammo',    ammoName:'Heavy Rounds'    },
-  { id:'magnum',         name:'.44 Magnum',       desc:'Big bore, big damage. Epic animals fear this.',       dmg:22, cost:1500, icon:'💥', ammoType:'magnum_ammo',   ammoName:'Magnum Rounds'   },
-  { id:'elephant_gun',   name:'Elephant Gun',     desc:'Built for the biggest game. Massive stopping power.', dmg:38, cost:4000, icon:'🐘', ammoType:'elephant_ammo', ammoName:'Elephant Rounds' },
-  { id:'anti_material',  name:'Anti-Material',    desc:'Military grade. Even dragons feel this one.',         dmg:60, cost:10000,icon:'⚡', ammoType:'anti_ammo',     ammoName:'Anti-Mat Rounds' },
-  { id:'golden_cannon',  name:'Golden Cannon',    desc:'Legendary weapon. One shot, one kill on most prey.',  dmg:120,cost:30000,icon:'🏆', ammoType:'cannon_ammo',   ammoName:'Cannon Shells'   },
+  { id:'hunting_rifle',  name:'Hunting Rifle',   desc:'Your trusty starter rifle. Reliable but slow.',       dmg:3,  cost:0,    icon:'🔫', ammoType:'rifle_ammo',    ammoName:'Rifle Rounds'    },
+  { id:'heavy_rifle',    name:'Heavy Rifle',      desc:'Hits harder. Two shots feel like three.',             dmg:7,  cost:500,  icon:'🎯', ammoType:'heavy_ammo',    ammoName:'Heavy Rounds'    },
+  { id:'magnum',         name:'.44 Magnum',       desc:'Big bore, big damage. Epic animals fear this.',       dmg:12, cost:1500, icon:'💥', ammoType:'magnum_ammo',   ammoName:'Magnum Rounds'   },
+  { id:'elephant_gun',   name:'Elephant Gun',     desc:'Built for the biggest game. Massive stopping power.', dmg:20, cost:4000, icon:'🐘', ammoType:'elephant_ammo', ammoName:'Elephant Rounds' },
+  { id:'anti_material',  name:'Anti-Material',    desc:'Military grade. Even dragons feel this one.',         dmg:28, cost:10000,icon:'⚡', ammoType:'anti_ammo',     ammoName:'Anti-Mat Rounds' },
+  { id:'golden_cannon',  name:'Golden Cannon',    desc:'Legendary weapon. One shot, one kill on most prey.',  dmg:38, cost:30000,icon:'🏆', ammoType:'cannon_ammo',   ammoName:'Cannon Shells'   },
   { id:'void_rifle',     name:'Void Rifle',        desc:'Forged from the darkness between stars. One-shots common prey, tears through all.',  dmg:45, cost:75000,icon:'🌌', ammoType:'void_ammo', ammoName:'Void Rounds' },
   { id:'gods_wrath',    name:"God's Wrath",        desc:'A weapon of divine destruction. Forged at the center of the universe. Even secret animals tremble.',  dmg:100, cost:500000, icon:'⚡🔥', ammoType:'gods_ammo', ammoName:'Divine Shells' },
   { id:'admin_gun',      name:'Admin Obliterator',desc:'⚠ ADMIN ONLY. Infinite ammo. Obliterates anything in one shot.', dmg:9999, cost:0, icon:'☠️', ammoType:'rifle_ammo', ammoName:'Rifle Rounds', adminOnly:true },
