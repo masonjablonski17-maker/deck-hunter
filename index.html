@@ -668,6 +668,66 @@ body {
   padding:7px 32px; cursor:pointer; letter-spacing:.08em; transition:background .15s;
 }
 #questClose:hover { background:rgba(110,55,10,0.95); }
+/* ── RAINBOW INDEX BADGE ── */
+@keyframes rainbowShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes badgePulse {
+  0%,100% { box-shadow: 0 0 6px 2px rgba(255,100,200,0.5); }
+  33%      { box-shadow: 0 0 10px 4px rgba(100,200,255,0.6); }
+  66%      { box-shadow: 0 0 8px 3px rgba(100,255,100,0.5); }
+}
+.rainbow-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-family: 'Georgia', serif;
+  font-weight: bold;
+  letter-spacing: .05em;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: linear-gradient(90deg,#ff4e50,#f9d423,#56ccf2,#a78bfa,#f43f5e,#ff4e50);
+  background-size: 300% 300%;
+  animation: rainbowShift 2.5s ease infinite, badgePulse 2.5s ease infinite;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+/* In leaderboard rows */
+.lb-rainbow {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: linear-gradient(90deg,#ff4e50,#f9d423,#56ccf2,#a78bfa,#f43f5e,#ff4e50);
+  background-size: 300% 300%;
+  animation: rainbowShift 2.5s ease infinite;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+  margin-left: 5px;
+  vertical-align: middle;
+  border: 1px solid rgba(255,255,255,0.25);
+  cursor: pointer;
+}
+/* Podium badge */
+.podium-rainbow {
+  display: block;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: linear-gradient(90deg,#ff4e50,#f9d423,#56ccf2,#a78bfa,#f43f5e,#ff4e50);
+  background-size: 300% 300%;
+  animation: rainbowShift 2.5s ease infinite;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  margin: 3px auto 0;
+  width: fit-content;
+  border: 1px solid rgba(255,255,255,0.2);
+}
 </style>
 </head>
 <body>
@@ -682,7 +742,10 @@ body {
     </div>
     <div class="hud-panel" style="text-align:right">
       <div id="scoreDisplay">CASH: $0</div>
-      <div id="nameDisplay" onclick="openRename()" style="font-size:11px;color:#a08040;margin-top:2px;cursor:pointer;letter-spacing:.04em;pointer-events:all" title="Click to change name">👤 —</div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:2px">
+        <div id="indexBadge" onclick="onIndexBadgeClick()" title="Leaderboard Completed!" style="display:none;cursor:pointer;pointer-events:all"></div>
+        <div id="nameDisplay" onclick="openRename()" style="font-size:11px;color:#a08040;cursor:pointer;letter-spacing:.04em;pointer-events:all" title="Click to change name">👤 —</div>
+      </div>
     </div>
   </div>
   <div id="navBtns" style="display:none;position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:10;flex-direction:row;align-items:center;gap:4px;white-space:nowrap;">
@@ -1026,6 +1089,10 @@ function submitName(){
     });
     Promise.all(deletes).then(()=>{ pushScore(); });
   });
+  // If index was already complete before naming, push the badge now
+  if(_indexComplete){
+    db.ref('indexComplete/'+deviceKey).set({ name: playerName, ts: Date.now() });
+  }
   startGame();
 }
 document.getElementById('nameInput').addEventListener('keydown', e=>{
@@ -1183,10 +1250,21 @@ function loadLB(){
   restEl.innerHTML = '';
   rankEl.textContent = '';
 
-  db.ref('leaderboard').once('value', snap=>{
+  // Fetch both leaderboard + indexComplete simultaneously
+  Promise.all([
+    db.ref('leaderboard').once('value'),
+    db.ref('indexComplete').once('value')
+  ]).then(([lbSnap, idxSnap]) => {
+    // Build set of names that completed the index
+    const completedNames = new Set();
+    idxSnap.forEach(child => {
+      const v = child.val();
+      if(v && v.name) completedNames.add(v.name.toLowerCase());
+    });
+
     // ── DEDUPLICATE by name — one entry per unique name, keep highest cash ──
     const byName = {};
-    snap.forEach(child=>{
+    lbSnap.forEach(child=>{
       const v = child.val();
       if(!v || !v.name || typeof v.cash !== 'number') return;
       if(v.name.toLowerCase()==='mason') return;
@@ -1212,8 +1290,10 @@ function loadLB(){
       if(!e) return '<div class="podium-col"></div>';
       const isMe = e.name === playerName;
       const pc = pClass[i];
+      const hasBadge = completedNames.has(e.name.toLowerCase());
       return `<div class="podium-col">
         <div class="podium-name ${pc}" style="${isMe?'color:#f0c060;':''}">${e.name}${isMe?' ★':''}</div>
+        ${hasBadge ? `<div class="podium-rainbow" onclick="alert('🌈 Leaderboard Completed!\\n${e.name} has hunted every species in the game!')">INDEX</div>` : ''}
         <div class="podium-cash ${pc}">$${e.cash.toLocaleString()}</div>
         <div class="podium-block ${pc}">
           <div class="podium-medal">${medals[i]}</div>
@@ -1226,9 +1306,11 @@ function loadLB(){
       const isMe = e.name === playerName;
       const medal = i < 3 ? medals[i] : `#${i+1}`;
       const rankStyle = i===0?' style="color:#f0c020"':i===1?' style="color:#c0c0c0"':i===2?' style="color:#c07830"':'';
+      const hasBadge = completedNames.has(e.name.toLowerCase());
+      const badgeHtml = hasBadge ? `<span class="lb-rainbow" onclick="event.stopPropagation();alert('🌈 Leaderboard Completed!\\n${e.name} has hunted every species in the game!')">INDEX</span>` : '';
       return `<div class="lb-row${isMe?' me':''}">
         <span class="lb-rank"${rankStyle}>${medal}</span>
-        <span class="lb-name">${e.name}${isMe?'<span class="lb-you">★ YOU</span>':''}</span>
+        <span class="lb-name">${e.name}${isMe?'<span class="lb-you">★ YOU</span>':''}${badgeHtml}</span>
         <span class="lb-cash">$${e.cash.toLocaleString()}</span>
       </div>`;
     }).join('');
@@ -1284,7 +1366,47 @@ function recordKill(type, cash){
   killIndex[type].totalCash+=cash;
   if(cash>killIndex[type].bestCash) killIndex[type].bestCash=cash;
   saveKillIndex();
+  checkIndexComplete();
 }
+
+// ── RAINBOW INDEX BADGE ──────────────────────────────────────
+let _indexComplete = false;
+function isIndexComplete(){
+  const all = Object.keys(TYPES);
+  return all.length > 0 && all.every(t => killIndex[t]?.kills > 0);
+}
+function checkIndexComplete(){
+  if(_indexComplete) return;
+  if(!isIndexComplete()) return;
+  _indexComplete = true;
+  localStorage.setItem('dh_index_complete','1');
+  // Push to Firebase so leaderboard can show the badge
+  if(playerName && deviceKey){
+    db.ref('indexComplete/'+deviceKey).set({ name: playerName, ts: Date.now() });
+  }
+  showIndexBadge();
+  addFloat(W/2, H*0.25, '🌈 INDEX COMPLETE!', '#ffffff');
+}
+function showIndexBadge(){
+  const el = document.getElementById('indexBadge');
+  if(!el) return;
+  el.style.display = 'block';
+  el.innerHTML = '<span class="rainbow-badge">INDEX</span>';
+}
+function onIndexBadgeClick(){
+  alert('🌈 Leaderboard Completed!\nYou have hunted every species in the game. Legendary hunter!');
+}
+// Check on load
+window.addEventListener('load', ()=>{
+  // Small defer so TYPES is defined
+  setTimeout(()=>{
+    if(localStorage.getItem('dh_index_complete')==='1' || isIndexComplete()){
+      _indexComplete = true;
+      localStorage.setItem('dh_index_complete','1');
+      showIndexBadge();
+    }
+  }, 200);
+});
 let pendingNextBatch=false;
 let paused=false;
 
