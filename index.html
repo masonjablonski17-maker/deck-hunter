@@ -1504,13 +1504,13 @@ function currentMap(){ return MAPS[currentMapId]; }
 
 // ── GUNS ─────────────────────────────────────────────────────
 const GUNS=[
-  { id:'hunting_rifle',  name:'Hunting Rifle',   desc:'Your trusty starter rifle. Reliable but slow.',       dmg:1,  cost:0,    icon:'🔫', ammoType:'rifle_ammo',    ammoName:'Rifle Rounds'    },
-  { id:'heavy_rifle',    name:'Heavy Rifle',      desc:'Hits harder. Two shots feel like three.',             dmg:2,  cost:500,  icon:'🎯', ammoType:'heavy_ammo',    ammoName:'Heavy Rounds'    },
-  { id:'magnum',         name:'.44 Magnum',       desc:'Big bore, big damage. Epic animals fear this.',       dmg:3,  cost:1500, icon:'💥', ammoType:'magnum_ammo',   ammoName:'Magnum Rounds'   },
-  { id:'elephant_gun',   name:'Elephant Gun',     desc:'Built for the biggest game. Massive stopping power.', dmg:5,  cost:4000, icon:'🐘', ammoType:'elephant_ammo', ammoName:'Elephant Rounds' },
-  { id:'anti_material',  name:'Anti-Material',    desc:'Military grade. Even dragons feel this one.',         dmg:9,  cost:10000,icon:'⚡', ammoType:'anti_ammo',     ammoName:'Anti-Mat Rounds' },
-  { id:'golden_cannon',  name:'Golden Cannon',    desc:'Legendary weapon. One shot, one kill on most prey.',  dmg:20, cost:30000,icon:'🏆', ammoType:'cannon_ammo',   ammoName:'Cannon Shells'   },
-  { id:'void_rifle',     name:'Void Rifle',        desc:'Forged from the darkness between stars. Tears through even cosmic creatures.',  dmg:45, cost:75000,icon:'🌌', ammoType:'void_ammo', ammoName:'Void Rounds' },
+  { id:'hunting_rifle',  name:'Hunting Rifle',   desc:'Your trusty starter rifle. Reliable but slow.',       dmg:5,  cost:0,    icon:'🔫', ammoType:'rifle_ammo',    ammoName:'Rifle Rounds'    },
+  { id:'heavy_rifle',    name:'Heavy Rifle',      desc:'Hits harder. Two shots feel like three.',             dmg:12, cost:500,  icon:'🎯', ammoType:'heavy_ammo',    ammoName:'Heavy Rounds'    },
+  { id:'magnum',         name:'.44 Magnum',       desc:'Big bore, big damage. Epic animals fear this.',       dmg:22, cost:1500, icon:'💥', ammoType:'magnum_ammo',   ammoName:'Magnum Rounds'   },
+  { id:'elephant_gun',   name:'Elephant Gun',     desc:'Built for the biggest game. Massive stopping power.', dmg:38, cost:4000, icon:'🐘', ammoType:'elephant_ammo', ammoName:'Elephant Rounds' },
+  { id:'anti_material',  name:'Anti-Material',    desc:'Military grade. Even dragons feel this one.',         dmg:60, cost:10000,icon:'⚡', ammoType:'anti_ammo',     ammoName:'Anti-Mat Rounds' },
+  { id:'golden_cannon',  name:'Golden Cannon',    desc:'Legendary weapon. One shot, one kill on most prey.',  dmg:120,cost:30000,icon:'🏆', ammoType:'cannon_ammo',   ammoName:'Cannon Shells'   },
+  { id:'void_rifle',     name:'Void Rifle',        desc:'Forged from the darkness between stars. One-shots common prey, tears through all.',  dmg:45, cost:75000,icon:'🌌', ammoType:'void_ammo', ammoName:'Void Rounds' },
   { id:'admin_gun',      name:'Admin Obliterator',desc:'⚠ ADMIN ONLY. Infinite ammo. Obliterates anything in one shot.', dmg:9999, cost:0, icon:'☠️', ammoType:'rifle_ammo', ammoName:'Rifle Rounds', adminOnly:true },
 ];
 const AMMO_PACKS=[
@@ -2549,14 +2549,14 @@ function drawDeck_shadow(){
 
 // weight: higher = more common. Total = 100 for easy % reading.
 const RARITIES={
-  common:    {label:'Common',    color:'#a0a0a0', glow:'rgba(160,160,160,0.6)', weight:45,  hp:1},
-  uncommon:  {label:'Uncommon',  color:'#40c040', glow:'rgba(60,200,60,0.6)',   weight:28,  hp:2},
-  rare:      {label:'Rare',      color:'#4080ff', glow:'rgba(60,120,255,0.6)',  weight:22,  hp:3},
-  epic:      {label:'Epic',      color:'#a040e0', glow:'rgba(160,60,220,0.6)', weight:7,   hp:5},
-  legendary: {label:'Legendary', color:'#ff9000', glow:'rgba(255,140,0,0.7)',  weight:4,   hp:8},
-  mythic:    {label:'Mythic',    color:'#ff2060', glow:'rgba(255,20,80,0.8)',  weight:1,   hp:15},
-  cosmic:    {label:'Cosmic',    color:'#00ffff', glow:'rgba(0,255,255,0.9)',  weight:0.3, hp:30},
-  secret:    {label:'Secret',    color:'#ff9f1c', glow:'rgba(255,140,0,0.95)',weight:0.05,hp:60},
+  common:    {label:'Common',    color:'#a0a0a0', glow:'rgba(160,160,160,0.6)', weight:45,  hp:45},
+  uncommon:  {label:'Uncommon',  color:'#40c040', glow:'rgba(60,200,60,0.6)',   weight:28,  hp:90},
+  rare:      {label:'Rare',      color:'#4080ff', glow:'rgba(60,120,255,0.6)',  weight:22,  hp:160},
+  epic:      {label:'Epic',      color:'#a040e0', glow:'rgba(160,60,220,0.6)', weight:7,   hp:300},
+  legendary: {label:'Legendary', color:'#ff9000', glow:'rgba(255,140,0,0.7)',  weight:4,   hp:500},
+  mythic:    {label:'Mythic',    color:'#ff2060', glow:'rgba(255,20,80,0.8)',  weight:1,   hp:900},
+  cosmic:    {label:'Cosmic',    color:'#00ffff', glow:'rgba(0,255,255,0.9)',  weight:0.3, hp:2000},
+  secret:    {label:'Secret',    color:'#ff9f1c', glow:'rgba(255,140,0,0.95)',weight:0.05,hp:5000},
 };
 
 // ── ANIMAL ───────────────────────────────────────────────────
