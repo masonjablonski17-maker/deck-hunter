@@ -922,6 +922,7 @@ body {
         <button class="admin-btn" id="spawnTargetBtn" onclick="toggleSpawnTarget()" style="border-color:#60a060;color:#60c060">🌍 EVERYONE</button>
         <button class="admin-btn" id="albinoToggleBtn" onclick="toggleAlbino()" style="border-color:#888;color:#aaa">✦ ALBINO: OFF</button>
         <button class="admin-btn" id="melanoticToggleBtn" onclick="toggleMelanistic()" style="border-color:#888;color:#aaa">◆ MELANISTIC: OFF</button>
+        <button class="admin-btn" id="piebaldToggleBtn" onclick="togglePiebald()" style="border-color:#888;color:#aaa">◈ PIEBALD: OFF</button>
       </div>
       <div class="admin-row" id="adminSpawnBtns"></div>
     </div>
@@ -1412,7 +1413,7 @@ let paused=false;
 
 // ── MAPS ──────────────────────────────────────────────────────
 // Version stamp — bump this to clear stale localStorage map data
-const MAP_VERSION='v6';
+const MAP_VERSION='v7';
 if(localStorage.getItem('dh_map_ver')!==MAP_VERSION){
   // Keep all existing owned maps, just register the new version
   localStorage.setItem('dh_map_ver', MAP_VERSION);
@@ -1453,6 +1454,12 @@ const MAPS={
     cost:200000, cashMult:6.5,
     desc:'A sunken deck beneath the crushing deep. The rarest and most valuable creatures in existence lurk in these pitch-black waters. The ultimate hunting ground.',
     animals:['crab','octopus','shark','manta','anglerfish','kraken','mosasaurus'],
+  },
+  jungle:{
+    id:'jungle', name:'Ancient Jungle', icon:'🌿',
+    cost:300000, cashMult:9.0,
+    desc:'A primordial jungle lost to time. Creatures of unimaginable power roam these canopies. Something ancient lurks in the shadows — a secret older than the hunt itself.',
+    animals:['parrot','monkey','panther','gorillaking','serpentgod','jungleroc','tiger'],
   },
 };
 let currentMapId = localStorage.getItem('dh_map') || 'forest';
@@ -1568,6 +1575,7 @@ function drawBG(){
   else if(currentMapId==='ocean') drawBG_ocean();
   else if(currentMapId==='shadow') drawBG_shadow();
   else if(currentMapId==='sky') drawBG_sky();
+  else if(currentMapId==='jungle') drawBG_jungle();
   else drawBG_forest();
 }
 function drawDeck(){
@@ -1576,6 +1584,7 @@ function drawDeck(){
   else if(currentMapId==='ocean') drawDeck_ocean();
   else if(currentMapId==='shadow') drawDeck_shadow();
   else if(currentMapId==='sky') drawDeck_sky();
+  else if(currentMapId==='jungle') drawDeck_jungle();
   else drawDeck_forest();
 }
 
@@ -2172,6 +2181,156 @@ function drawDeck_sky(){
   }
 }
 
+// ── JUNGLE BACKGROUND ─────────────────────────────────────────
+function drawBG_jungle(){
+  const t=Date.now()*0.001;
+  const px=parallaxX, py=parallaxY;
+
+  // Sky — deep emerald canopy filtered light
+  const sg=ctx.createLinearGradient(0,0,0,H*0.56);
+  sg.addColorStop(0,'#020e04'); sg.addColorStop(0.25,'#041a06');
+  sg.addColorStop(0.55,'#062210'); sg.addColorStop(1,'#0a2e14');
+  ctx.fillStyle=sg; ctx.fillRect(0,0,W,H*0.56);
+
+  // God rays — shafts of amber/green light piercing the canopy
+  ctx.save();
+  for(let i=0;i<7;i++){
+    const rx=W*(0.08+i*0.14)+Math.sin(t*0.4+i)*18;
+    const rw=14+Math.sin(t*0.6+i*1.3)*6;
+    const rAlpha=0.04+0.03*Math.sin(t*0.8+i*0.9);
+    const rg=ctx.createLinearGradient(rx,0,rx,H*0.6);
+    rg.addColorStop(0,`rgba(180,255,80,${rAlpha})`);
+    rg.addColorStop(0.5,`rgba(120,200,40,${rAlpha*0.5})`);
+    rg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=rg;
+    ctx.beginPath();
+    ctx.moveTo(rx-rw,0); ctx.lineTo(rx+rw,0);
+    ctx.lineTo(rx+rw*2.5,H*0.6); ctx.lineTo(rx-rw*2.5,H*0.6);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+
+  // Distant jungle canopy silhouette — far layer
+  ctx.save(); ctx.translate(px*0.01,py*0.003);
+  ctx.fillStyle='#020c04';
+  ctx.beginPath(); ctx.moveTo(0,H*0.46);
+  for(let xi=0;xi<=W;xi+=22){
+    const cy=H*(0.20+0.06*Math.sin(xi*0.018+1.2)+0.04*Math.sin(xi*0.035+2.4));
+    ctx.lineTo(xi,cy);
+  }
+  ctx.lineTo(W,H*0.46); ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  // Mid canopy layer
+  ctx.save(); ctx.translate(px*0.025,0);
+  ctx.fillStyle='#041208';
+  ctx.beginPath(); ctx.moveTo(0,H*0.50);
+  for(let xi=0;xi<=W;xi+=16){
+    const cy=H*(0.30+0.07*Math.sin(xi*0.022+0.5)+0.03*Math.sin(xi*0.048+1.8));
+    ctx.lineTo(xi,cy);
+  }
+  ctx.lineTo(W,H*0.50); ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  // Ground foliage gradient
+  const gg=ctx.createLinearGradient(0,H*0.52,0,H*0.66);
+  gg.addColorStop(0,'#0c2208'); gg.addColorStop(0.5,'#081a06'); gg.addColorStop(1,'#040e04');
+  ctx.fillStyle=gg; ctx.fillRect(0,H*0.52,W,H*0.14);
+
+  // Jungle tree trunks and ferns — near layer
+  ctx.save(); ctx.translate(px*0.06,0);
+  for(let i=0;i<14;i++){
+    const tx=(i/14)*W*1.1-W*0.05;
+    const ty=H*0.56;
+    const th=H*(0.18+Math.sin(i*1.9)*0.06);
+    const tw=8+Math.sin(i*2.3)*3;
+    // Trunk
+    const trg=ctx.createLinearGradient(tx-tw,0,tx+tw,0);
+    trg.addColorStop(0,'#060e04'); trg.addColorStop(0.4,'#0e1e08'); trg.addColorStop(1,'#060e04');
+    ctx.fillStyle=trg;
+    ctx.beginPath(); ctx.roundRect(tx-tw/2,ty-th,tw,th,tw/3); ctx.fill();
+    // Hanging vines
+    ctx.strokeStyle=`rgba(20,50,12,0.7)`; ctx.lineWidth=1.5;
+    for(let v=0;v<3;v++){
+      const vx=tx+(v-1)*tw*0.8;
+      ctx.beginPath();
+      ctx.moveTo(vx,ty-th*0.7);
+      ctx.quadraticCurveTo(vx+Math.sin(t*0.5+i+v)*8,ty-th*0.4,vx+Math.sin(t*0.3+v)*5,ty-th*0.1);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // Foreground fern fronds
+  ctx.save(); ctx.translate(px*0.1,0);
+  for(let i=0;i<20;i++){
+    const fx=(i/20)*W*1.15-W*0.07;
+    const fy=H*0.585+Math.sin(i*2.3)*H*0.02;
+    const flen=18+Math.sin(i*1.7)*8;
+    const fsway=Math.sin(t*0.6+i*0.7)*4;
+    ctx.strokeStyle=`rgba(${20+i%5*4},${55+i%4*8},${15+i%3*5},0.75)`;
+    ctx.lineWidth=1.5;
+    for(let j=0;j<5;j++){
+      const ang=-0.4+j*0.2+fsway*0.02;
+      ctx.beginPath();
+      ctx.moveTo(fx,fy);
+      ctx.quadraticCurveTo(fx+Math.cos(ang)*flen*0.6,fy-Math.sin(Math.abs(ang))*flen*0.5,
+                           fx+Math.cos(ang)*flen,fy-Math.sin(Math.abs(ang))*flen);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // Fireflies — tiny golden sparks
+  ctx.save();
+  for(let i=0;i<18;i++){
+    const ft=t*0.5+i*0.7;
+    const ffx=((i*137+Math.sin(ft)*30)%W+W)%W;
+    const ffy=H*(0.25+0.25*Math.sin(ft*1.3+i));
+    const ffa=0.3+0.6*Math.abs(Math.sin(ft*2.1));
+    ctx.fillStyle=`rgba(220,255,80,${ffa})`;
+    ctx.shadowColor='rgba(180,255,60,0.8)'; ctx.shadowBlur=6;
+    ctx.beginPath(); ctx.arc(ffx,ffy,1.5,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+  }
+  ctx.restore();
+}
+function drawDeck_jungle(){
+  const dy=H*0.72, dh=H-dy;
+  // Ancient mossy stone deck
+  ctx.fillStyle='#0a1808'; ctx.fillRect(0,dy-4,W,4);
+  for(let i=0;i<8;i++){
+    const py2=dy+i*(dh/8), ph=dh/8;
+    const r=40+i*3, g=55+i*4, b=30+i*2;
+    ctx.fillStyle=`rgb(${r},${g},${b})`;
+    ctx.fillRect(0,py2,W,ph-1);
+    // Moss grain
+    ctx.strokeStyle='rgba(30,70,15,0.25)'; ctx.lineWidth=0.5;
+    for(let gc=0;gc<3;gc++){
+      ctx.beginPath();
+      ctx.moveTo(0,py2+ph*(0.2+gc*0.25));
+      ctx.lineTo(W,py2+ph*(0.2+gc*0.25)+Math.sin(i*gc*1.4)*1.5); ctx.stroke();
+    }
+  }
+  // Stone railing with moss
+  ctx.fillStyle='#2a3818'; ctx.fillRect(0,dy-18,W,14);
+  ctx.fillStyle='rgba(60,100,30,0.4)'; ctx.fillRect(0,dy-18,W,4);
+  for(let i=0;i<=9;i++){
+    const px2=i*(W/9);
+    ctx.fillStyle='#243014'; ctx.fillRect(px2-5,dy-30,10,30);
+    ctx.fillStyle='rgba(50,90,20,0.3)'; ctx.fillRect(px2-5,dy-30,3,30);
+  }
+  // Creeping vines on railing
+  const t=Date.now()*0.001;
+  ctx.strokeStyle='rgba(30,80,15,0.6)'; ctx.lineWidth=1.5;
+  for(let i=0;i<W;i+=24){
+    const vy=dy-18+Math.sin(i*0.08+t*0.4)*4;
+    ctx.beginPath(); ctx.moveTo(i,vy); ctx.lineTo(i+12,vy+Math.sin(i*0.12)*3); ctx.stroke();
+    ctx.fillStyle='rgba(30,100,20,0.5)';
+    ctx.beginPath(); ctx.ellipse(i+6,vy-2,4,3,Math.sin(i)*0.3,0,Math.PI*2); ctx.fill();
+  }
+}
+
 // ── SHADOW REALM BACKGROUND ──────────────────────────────────
 function drawBG_shadow(){
   const t=Date.now()*0.001;
@@ -2361,6 +2520,7 @@ const RARITIES={
   legendary: {label:'Legendary', color:'#ff9000', glow:'rgba(255,140,0,0.7)',  weight:4,   hp:8},
   mythic:    {label:'Mythic',    color:'#ff2060', glow:'rgba(255,20,80,0.8)',  weight:1,   hp:15},
   cosmic:    {label:'Cosmic',    color:'#00ffff', glow:'rgba(0,255,255,0.9)',  weight:0.3, hp:30},
+  secret:    {label:'Secret',    color:'#ff9f1c', glow:'rgba(255,140,0,0.95)',weight:0.05,hp:60},
 };
 
 // ── ANIMAL ───────────────────────────────────────────────────
@@ -2409,6 +2569,14 @@ const TYPES={
   phoenix:    {rarity:'legendary', speed:130,points:12000, w:90,h:80,  body:'#c04010',limb:'#802000',alt:'#ff8020'},
   stormdrake: {rarity:'mythic',    speed:110,points:22000, w:120,h:90, body:'#304060',limb:'#182030',alt:'#6080c0'},
   celestialserpent:{rarity:'cosmic', speed:85, points:28000, w:340,h:80, body:'#b0c0ff',limb:'#6070c0',alt:'#e0e8ff'},
+  // ── JUNGLE EXCLUSIVES ─────────────────────────────────────
+  parrot:      {rarity:'common',    speed:160,points:800,   w:32,h:40,  body:'#22bb22',limb:'#116611',alt:'#ff4400'},
+  monkey:      {rarity:'uncommon',  speed:140,points:1800,  w:44,h:56,  body:'#8b5e3c',limb:'#5a3a1a',alt:'#c08040'},
+  panther:     {rarity:'rare',      speed:155,points:4000,  w:70,h:58,  body:'#1a1a1a',limb:'#0d0d0d',alt:'#2a2a2a'},
+  gorillaking: {rarity:'epic',      speed:60, points:9000,  w:110,h:100,body:'#2a2010',limb:'#180c04',alt:'#3c2c14'},
+  serpentgod:  {rarity:'legendary', speed:110,points:18000, w:300,h:55, body:'#1a4a1a',limb:'#0d2a0d',alt:'#2a6a2a'},
+  jungleroc:   {rarity:'mythic',    speed:180,points:38000, w:130,h:100,body:'#4a3010',limb:'#2a1808',alt:'#6a4820'},
+  tiger:{rarity:'secret',    speed:88, points:120000,w:260,h:140,body:'#e86000',limb:'#180800',alt:'#f08000'},
 };
 
 class Animal{
@@ -2440,6 +2608,14 @@ class Animal{
     if(this.melanistic){
       this.body='#0e0e0e'; this.limb='#1a1a1a'; this.alt='#252525';
       this.points=Math.round(this.points*5);
+    }
+    // 2% chance of piebald — patchy white, 2× cash, warm glow (cannot stack with albino/melanistic)
+    this.piebald=!this.albino && !this.melanistic && Math.random()<(globalLuckLevel===8?0.16:globalLuckLevel===4?0.08:globalLuckLevel===2?0.04:0.02);
+    if(this.piebald){
+      // Keep base body colors but lighten them toward white — patchy look
+      this.patchBody=this.body; this.patchLimb=this.limb; this.patchAlt=this.alt;
+      this.body='#e8e0d8'; this.limb='#c8b8a8'; this.alt='#f0ece8';
+      this.points=Math.round(this.points*2);
     }
   }
 
@@ -2477,7 +2653,7 @@ class Animal{
 
     // Rarity glow aura for epic+
     const rar=RARITIES[this.rarity];
-    if(this.rarity==='epic'||this.rarity==='legendary'||this.rarity==='mythic'||this.rarity==='cosmic'){
+    if(this.rarity==='epic'||this.rarity==='legendary'||this.rarity==='mythic'||this.rarity==='cosmic'||this.rarity==='secret'){
       const pulse=0.4+0.3*Math.sin(Date.now()*0.004+(this.x*0.01));
       ctx.shadowColor=rar.glow; ctx.shadowBlur=18+pulse*14;
       if(this.rarity==='cosmic'){
@@ -2485,6 +2661,13 @@ class Animal{
         const ct=Date.now()*0.001;
         const ch=Math.floor((ct*40)%360);
         ctx.shadowColor=`hsl(${ch},100%,70%)`; ctx.shadowBlur=32+pulse*20;
+      }
+      if(this.rarity==='secret'){
+        // Ancient tiger — burning orange pulsing inferno aura
+        const st=Date.now()*0.002;
+        const sa=0.6+0.35*Math.sin(st*2.1);
+        ctx.shadowColor=`rgba(255,${Math.floor(80+60*Math.sin(st*1.4))},0,${sa})`;
+        ctx.shadowBlur=55+pulse*30;
       }
     }
     // Albino shimmer — cycling rainbow glow
@@ -2498,6 +2681,11 @@ class Animal{
       // Deep dark void shimmer — cycles between dark purples and blacks
       const h=Math.floor((t*30+240)%360);
       ctx.shadowColor=`hsl(${h},80%,25%)`; ctx.shadowBlur=32+Math.sin(t*2.5)*12;
+    }
+    // Piebald warm golden glow
+    if(this.piebald){
+      const t=Date.now()*0.002;
+      ctx.shadowColor=`rgba(255,210,140,${0.7+Math.sin(t*2)*0.2})`; ctx.shadowBlur=18+Math.sin(t*1.8)*6;
     }
 
     if(this.type==='deer')        this._deer(leg);
@@ -2538,6 +2726,13 @@ class Animal{
     if(this.type==='phoenix')     this._phoenix(leg);
     if(this.type==='stormdrake')  this._stormdrake(leg);
     if(this.type==='celestialserpent') this._celestialserpent(leg);
+    if(this.type==='parrot')       this._parrot(leg);
+    if(this.type==='monkey')       this._monkey(leg);
+    if(this.type==='panther')      this._panther(leg);
+    if(this.type==='gorillaking')  this._gorillaking(leg);
+    if(this.type==='serpentgod')   this._serpentgod(leg);
+    if(this.type==='jungleroc')    this._jungleroc(leg);
+    if(this.type==='tiger') this._tiger(leg);
 
     ctx.restore();
 
@@ -2577,7 +2772,21 @@ class Animal{
       }
       ctx.restore();
     }
-    if(!this.dying && (this.maxHp>1 || this.albino || this.melanistic)){
+    // Piebald golden dust particles drifting upward
+    if(this.piebald && !this.dying){
+      const t=Date.now()*0.003;
+      const bob2=Math.sin(this.bobT)*(this.type==='rabbit'?3.5:1.8);
+      ctx.save(); ctx.globalAlpha=this.opacity;
+      for(let i=0;i<4;i++){
+        const px2=this.x+(Math.sin(t*1.4+i*1.6)*this.w*0.5);
+        const py2=(this.y+bob2-this.h*0.4)-(((t*30+i*25)%40));
+        const pa=0.5+0.35*Math.sin(t*2+i);
+        ctx.fillStyle=`rgba(255,220,120,${pa})`;
+        ctx.beginPath(); ctx.arc(px2,py2,2,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+    if(!this.dying && (this.maxHp>1 || this.albino || this.melanistic || this.piebald)){
       const rar=RARITIES[this.rarity];
       // How far above this.y each animal's topmost pixel is (ears/antlers/horns)
       const headTops={deer:96,rabbit:42,bear:70,fox:56,wolf:74,dragon:84,
@@ -2585,7 +2794,8 @@ class Animal{
                       viper:28,boar:62,jaguar:60,gorilla:78,titanboa:32,lavabeast:88,
                       crab:42,octopus:65,shark:52,manta:55,anglerfish:74,kraken:105,mosasaurus:280,
                       wraith:74,bonehound:62,phantombat:54,gravelord:100,soulreaper:108,voidleviathan:135,
-                      sparrow:30,eagle:50,thunderbird:70,wyvern:80,phoenix:88,stormdrake:95,celestialserpent:90};
+                      sparrow:30,eagle:50,thunderbird:70,wyvern:80,phoenix:88,stormdrake:95,celestialserpent:90,
+                      parrot:44,monkey:60,panther:62,gorillaking:105,serpentgod:40,jungleroc:100,tiger:145};
       const top=headTops[this.type]||this.h;
       const bob=Math.sin(this.bobT)*(this.type==='rabbit'?3.5:1.8);
       // this.x is always the true screen x position
@@ -2631,6 +2841,26 @@ class Animal{
         ctx.fillStyle=`hsl(${mh},70%,55%)`;
         ctx.shadowColor=`hsl(${mh},80%,40%)`; ctx.shadowBlur=12;
         ctx.fillText('◆ MELANISTIC ◆', bx, barY-16);
+      }
+      // Piebald label
+      if(this.piebald){
+        ctx.font='bold 11px Georgia';
+        ctx.fillStyle='#f0c878';
+        ctx.shadowColor='rgba(255,200,100,0.8)'; ctx.shadowBlur=10;
+        ctx.fillText('◈ PIEBALD ◈', bx, barY-16);
+      }
+      // Secret label — shows ??? until killed
+      if(this.rarity==='secret'){
+        const st=Date.now()*0.003;
+        const sh=Math.floor((st*50)%360);
+        ctx.font='bold 13px Georgia';
+        ctx.fillStyle=`hsl(${sh},100%,65%)`;
+        ctx.shadowColor=`hsl(${sh},100%,55%)`; ctx.shadowBlur=16;
+        ctx.fillText('⚠ TIGER ⚠', bx, barY-20);
+        ctx.font='10px Georgia';
+        ctx.fillStyle='rgba(255,200,80,0.8)';
+        ctx.shadowBlur=6;
+        ctx.fillText('??? SECRET ???', bx, barY-8);
       }
       ctx.restore();
     }
@@ -4503,6 +4733,778 @@ class Animal{
     c.shadowBlur=0;
     c.fillStyle='#0a1020'; c.beginPath(); c.arc(32,-52,1.4,0,Math.PI*2); c.fill();
   }
+
+  // ── JUNGLE ANIMALS ──────────────────────────────────────────
+  _parrot(leg){
+    const c=ctx, t=Date.now()*0.01;
+    const flap=Math.sin(t)*10;
+    c.fillStyle='rgba(0,0,0,0.12)'; c.beginPath(); c.ellipse(0,2,14,4,0,0,Math.PI*2); c.fill();
+    // Wings
+    c.fillStyle='#22aa22';
+    c.beginPath(); c.moveTo(-2,-16); c.quadraticCurveTo(-22,-24+flap,-28,-12+flap*0.5); c.quadraticCurveTo(-18,-8,-2,-12); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(2,-16); c.quadraticCurveTo(22,-24+flap,28,-12+flap*0.5); c.quadraticCurveTo(18,-8,2,-12); c.closePath(); c.fill();
+    // Body
+    c.fillStyle='#33cc33'; c.beginPath(); c.ellipse(0,-14,10,12,0,0,Math.PI*2); c.fill();
+    // Head
+    c.fillStyle='#22aa22'; c.beginPath(); c.ellipse(0,-28,9,8,0,0,Math.PI*2); c.fill();
+    // Red forehead
+    c.fillStyle='#ff2200'; c.beginPath(); c.ellipse(0,-33,6,4,0,0,Math.PI*2); c.fill();
+    // Beak
+    c.fillStyle='#ddaa00'; c.beginPath(); c.moveTo(6,-28); c.lineTo(14,-26); c.lineTo(10,-31); c.closePath(); c.fill();
+    c.fillStyle='#1a1a1a'; c.beginPath(); c.arc(4,-30,2,0,Math.PI*2); c.fill();
+    // Tail feathers
+    c.fillStyle='#0055ff'; c.beginPath(); c.moveTo(-4,-8); c.lineTo(-8,8); c.lineTo(0,6); c.lineTo(4,10); c.lineTo(8,6); c.lineTo(8,-8); c.closePath(); c.fill();
+    c.fillStyle='#ff3300'; c.beginPath(); c.moveTo(-2,-6); c.lineTo(-4,8); c.lineTo(4,8); c.lineTo(2,-6); c.closePath(); c.fill();
+  }
+
+  _monkey(leg){
+    const c=ctx;
+    c.fillStyle='rgba(0,0,0,0.15)'; c.beginPath(); c.ellipse(0,2,18,5,0,0,Math.PI*2); c.fill();
+    c.strokeStyle=this.limb; c.lineWidth=5; c.lineCap='round';
+    [[-10,leg*.5],[-3,-leg*.5],[7,leg*.6],[14,-leg*.6]].forEach(([ox,sw])=>{
+      c.beginPath(); c.moveTo(ox,-14); c.lineTo(ox+sw,3); c.stroke();
+    });
+    // Long tail
+    c.strokeStyle=this.alt; c.lineWidth=4;
+    c.beginPath(); c.moveTo(-12,-18); c.quadraticCurveTo(-32,-8,-36,8); c.quadraticCurveTo(-34,18,-26,14); c.stroke();
+    c.fillStyle=this.body; c.beginPath(); c.ellipse(0,-22,16,13,0,0,Math.PI*2); c.fill();
+    // Arms reaching up
+    c.strokeStyle=this.limb; c.lineWidth=5;
+    c.beginPath(); c.moveTo(-14,-24); c.lineTo(-22,-36); c.stroke();
+    c.beginPath(); c.moveTo(14,-24); c.lineTo(22,-36); c.stroke();
+    c.fillStyle=this.body; c.beginPath(); c.ellipse(8,-34,12,11,0.2,0,Math.PI*2); c.fill();
+    // Face
+    c.fillStyle='#c09060'; c.beginPath(); c.ellipse(8,-33,7,6,0.1,0,Math.PI*2); c.fill();
+    c.fillStyle='#1a0a00'; c.beginPath(); c.arc(6,-35,2,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(12,-35,2,0,Math.PI*2); c.fill();
+    c.fillStyle='#c09060'; c.beginPath(); c.arc(-2,-34,5,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(18,-34,5,0,Math.PI*2); c.fill();
+  }
+
+  _panther(leg){
+    const c=ctx;
+    c.fillStyle='rgba(0,0,0,0.2)'; c.beginPath(); c.ellipse(0,2,28,6,0,0,Math.PI*2); c.fill();
+    c.strokeStyle=this.limb; c.lineWidth=5.5; c.lineCap='round';
+    [[-14,leg*.5],[-4,-leg*.5],[8,leg*.6],[18,-leg*.6]].forEach(([ox,sw])=>{
+      c.beginPath(); c.moveTo(ox,-16); c.lineTo(ox+sw,3); c.stroke();
+    });
+    // Long tail
+    c.strokeStyle=this.alt; c.lineWidth=5;
+    c.beginPath(); c.moveTo(-20,-20); c.quadraticCurveTo(-48,-8,-50,8); c.stroke();
+    c.fillStyle=this.body; c.beginPath(); c.ellipse(0,-26,26,15,0.08,0,Math.PI*2); c.fill();
+    // Subtle rosette pattern on black coat
+    c.strokeStyle='rgba(50,50,50,0.5)'; c.lineWidth=1;
+    [[8,-28,4],[0,-22,3],[-10,-30,3.5],[14,-20,3]].forEach(([sx,sy,r])=>{
+      c.beginPath(); c.arc(sx,sy,r,0,Math.PI*2); c.stroke();
+    });
+    c.fillStyle=this.body; c.beginPath(); c.ellipse(18,-38,10,13,0.2,0,Math.PI*2); c.fill();
+    c.fillStyle=this.body; c.beginPath(); c.ellipse(28,-50,14,11,0.1,0,Math.PI*2); c.fill();
+    c.fillStyle=this.alt;
+    c.beginPath(); c.moveTo(34,-50); c.lineTo(44,-46); c.lineTo(42,-54); c.closePath(); c.fill();
+    c.fillStyle='#30ff60'; c.shadowColor='#00ff40'; c.shadowBlur=8;
+    c.beginPath(); c.arc(30,-52,3.2,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    c.fillStyle='#040404'; c.beginPath(); c.arc(30,-52,1.6,0,Math.PI*2); c.fill();
+    c.fillStyle=this.body;
+    c.beginPath(); c.moveTo(18,-57); c.lineTo(14,-68); c.lineTo(24,-62); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(26,-57); c.lineTo(25,-69); c.lineTo(34,-60); c.closePath(); c.fill();
+  }
+
+  _gorillaking(leg){
+    const c=ctx;
+    c.fillStyle='rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(0,5,48,10,0,0,Math.PI*2); c.fill();
+    // Massive legs
+    c.strokeStyle=this.limb; c.lineWidth=16; c.lineCap='round';
+    [[-26,leg*.3],[-8,-leg*.3],[10,leg*.35],[28,-leg*.35]].forEach(([ox,sw])=>{
+      c.beginPath(); c.moveTo(ox,-18); c.lineTo(ox+sw,6); c.stroke();
+    });
+    // Thick body
+    c.fillStyle=this.body; c.beginPath(); c.ellipse(0,-34,44,30,0,0,Math.PI*2); c.fill();
+    // Chest thump patch
+    c.fillStyle='rgba(80,50,20,0.4)'; c.beginPath(); c.ellipse(0,-32,22,18,0,0,Math.PI*2); c.fill();
+    // Huge arms
+    c.strokeStyle=this.limb; c.lineWidth=14; c.lineCap='round';
+    c.beginPath(); c.moveTo(-38,-30); c.lineTo(-54,-12); c.stroke();
+    c.beginPath(); c.moveTo(38,-30); c.lineTo(54,-12); c.stroke();
+    // Giant hands
+    c.fillStyle=this.limb; c.beginPath(); c.arc(-54,-10,10,0,Math.PI*2); c.fill();
+    c.fillStyle=this.limb; c.beginPath(); c.arc(54,-10,10,0,Math.PI*2); c.fill();
+    // Head — enormous
+    c.fillStyle=this.alt; c.beginPath(); c.ellipse(0,-68,28,26,0,0,Math.PI*2); c.fill();
+    // Brow ridge
+    c.fillStyle=this.limb; c.beginPath(); c.ellipse(0,-72,30,10,0,0,Math.PI); c.fill();
+    // Nose
+    c.fillStyle='#100806'; c.beginPath(); c.ellipse(0,-66,9,7,0,0,Math.PI*2); c.fill();
+    c.fillStyle='#1a0a04'; c.beginPath(); c.arc(-4,-66,3,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(4,-66,3,0,Math.PI*2); c.fill();
+    // Eyes — deep and intimidating
+    c.fillStyle='#cc4400'; c.shadowColor='#ff2200'; c.shadowBlur=10;
+    c.beginPath(); c.arc(-10,-74,4,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(10,-74,4,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    c.fillStyle='#0a0404'; c.beginPath(); c.arc(-10,-74,2,0,Math.PI*2); c.fill();
+    c.beginPath(); c.arc(10,-74,2,0,Math.PI*2); c.fill();
+    // Crown of jungle leaves
+    c.fillStyle='#1a6610';
+    [[-22,-90],[-12,-96],[-2,-100],[8,-96],[18,-90]].forEach(([lx,ly])=>{
+      c.beginPath(); c.moveTo(lx,ly); c.lineTo(lx-8,ly+12); c.lineTo(lx+8,ly+12); c.closePath(); c.fill();
+    });
+  }
+
+  _serpentgod(leg){
+    const c=ctx, t=Date.now()*0.002;
+    // Massive multi-body snake — 22 segments
+    const segs=22, bodyW=20;
+    const amp=28, freq=0.22;
+    c.fillStyle='rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(0,6,this.w*0.45,10,0,0,Math.PI*2); c.fill();
+    // Body segments
+    for(let i=segs;i>=0;i--){
+      const sx=(i/segs)*this.w*0.7 - this.w*0.35;
+      const sy=-16+Math.sin((i/segs)*Math.PI*2.5+t*2)*amp*(0.3+i/segs*0.7);
+      const sw=bodyW*(0.4+i/segs*0.6);
+      const hue=120+i*2;
+      c.fillStyle=`hsl(${hue},60%,${12+i%2*4}%)`;
+      if(i%3===0){ c.fillStyle=`hsl(${hue+10},55%,20%)`; }
+      c.beginPath(); c.ellipse(sx,sy,sw,sw*0.55,0,0,Math.PI*2); c.fill();
+    }
+    // Massive head
+    const hx=this.w*0.35;
+    const hy=-16+Math.sin(t*2)*amp*0.3;
+    c.fillStyle='#1e5a1e'; c.beginPath(); c.ellipse(hx,hy,30,20,0.15,0,Math.PI*2); c.fill();
+    c.fillStyle='#0a2a0a'; c.beginPath(); c.ellipse(hx+10,hy+2,18,10,0.1,0,Math.PI*2); c.fill();
+    // Forked tongue
+    const tongueAlpha=0.5+0.5*Math.sin(t*8);
+    c.strokeStyle=`rgba(255,60,60,${tongueAlpha})`; c.lineWidth=2;
+    c.beginPath(); c.moveTo(hx+24,hy+2); c.lineTo(hx+36,hy-3); c.stroke();
+    c.beginPath(); c.moveTo(hx+24,hy+2); c.lineTo(hx+36,hy+6); c.stroke();
+    // Eyes — glowing gold
+    c.fillStyle='#ffdd00'; c.shadowColor='#ffaa00'; c.shadowBlur=12;
+    c.beginPath(); c.arc(hx+8,hy-8,5,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    c.fillStyle='#0a0800'; c.beginPath(); c.arc(hx+8,hy-8,2.5,0,Math.PI*2); c.fill();
+    // Crown of golden scales
+    c.fillStyle='#ccaa00';
+    [[-6,-10],[-2,-15],[4,-17],[10,-15],[14,-10]].forEach(([dx,dy])=>{
+      c.beginPath(); c.moveTo(hx+dx,hy+dy); c.lineTo(hx+dx-4,hy+dy+8); c.lineTo(hx+dx+4,hy+dy+8); c.closePath(); c.fill();
+    });
+  }
+
+  _jungleroc(leg){
+    const c=ctx, t=Date.now()*0.008;
+    const flap=Math.sin(t)*16;
+    c.fillStyle='rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(0,4,50,10,0,0,Math.PI*2); c.fill();
+    // Enormous wings
+    c.fillStyle=this.body;
+    c.beginPath(); c.moveTo(-10,-30); c.quadraticCurveTo(-60,-70+flap,-75,-45+flap*0.4);
+    c.quadraticCurveTo(-60,-20,-24,-22); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(10,-30); c.quadraticCurveTo(60,-70+flap,75,-45+flap*0.4);
+    c.quadraticCurveTo(60,-20,24,-22); c.closePath(); c.fill();
+    // Wing details — feather lines
+    c.strokeStyle=this.limb; c.lineWidth=1.5;
+    [[-20,-25,-55,-50],[-10,-28,-42,-62],[10,-28,42,-62],[20,-25,55,-50]].forEach(([x1,y1,x2,y2])=>{
+      c.beginPath(); c.moveTo(x1,y1+flap*0.1); c.lineTo(x2,y2+flap*0.4); c.stroke();
+    });
+    // Body
+    c.fillStyle=this.alt; c.beginPath(); c.ellipse(0,-32,28,22,0,0,Math.PI*2); c.fill();
+    c.fillStyle=this.body; c.beginPath(); c.ellipse(0,-28,22,18,0,0,Math.PI*2); c.fill();
+    // Neck + head
+    c.fillStyle=this.alt; c.beginPath(); c.ellipse(0,-52,14,16,0,0,Math.PI*2); c.fill();
+    c.fillStyle=this.body; c.beginPath(); c.ellipse(0,-66,18,15,0,0,Math.PI*2); c.fill();
+    // Hooked beak
+    c.fillStyle='#ddaa00';
+    c.beginPath(); c.moveTo(12,-66); c.lineTo(28,-62); c.lineTo(24,-72); c.lineTo(16,-70); c.closePath(); c.fill();
+    // Eyes
+    c.fillStyle='#ffaa00'; c.shadowColor='#ff8800'; c.shadowBlur=8;
+    c.beginPath(); c.arc(8,-68,4,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    c.fillStyle='#050300'; c.beginPath(); c.arc(8,-68,2,0,Math.PI*2); c.fill();
+    // Crest
+    c.fillStyle='#cc6600';
+    c.beginPath(); c.moveTo(-6,-78); c.lineTo(-10,-95); c.lineTo(-2,-82); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(0,-80); c.lineTo(-2,-98); c.lineTo(6,-84); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(6,-78); c.lineTo(6,-95); c.lineTo(12,-80); c.closePath(); c.fill();
+    // Talons
+    c.strokeStyle='#2a1808'; c.lineWidth=4; c.lineCap='round';
+    [[-14,leg*.4],[-4,-leg*.4],[8,leg*.45],[18,-leg*.45]].forEach(([ox,sw])=>{
+      c.beginPath(); c.moveTo(ox,-8); c.lineTo(ox+sw,6); c.stroke();
+      c.strokeStyle='#443020'; c.lineWidth=1.5;
+      [-4,0,4].forEach(cx2=>{ c.beginPath(); c.moveTo(ox+sw,6); c.lineTo(ox+sw+cx2,14); c.stroke(); });
+      c.strokeStyle='#2a1808'; c.lineWidth=4;
+    });
+  }
+
+  _tiger(leg){
+    const c=ctx;
+    const t=Date.now()*0.0018;
+    const pulse=0.5+0.5*Math.sin(t*2.4);
+    const breathe=Math.sin(t*0.9)*1.8;
+    // Jaw: 0=closed, 1=wide open, animates slowly
+    const jawAnim=0.55+0.45*Math.sin(t*1.3);
+
+    // ═══════════════════════════════════════════════
+    // COORDINATE SYSTEM:
+    //   x=0 is body centre-mass
+    //   y=0 is ground level
+    //   Body: x=-130(tail) to x=+90(chest)
+    //   Back: y≈-50,  Belly: y≈-10
+    // ═══════════════════════════════════════════════
+
+    // ── Ground shadow ──
+    const shG=c.createRadialGradient(0,4,0,0,4,130);
+    shG.addColorStop(0,'rgba(0,0,0,0.5)');
+    shG.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=shG;
+    c.beginPath(); c.ellipse(-10,6,130,16,0,0,Math.PI*2); c.fill();
+
+    // Inferno ground heat
+    c.save(); c.globalAlpha=0.09+0.06*pulse;
+    const heatG=c.createRadialGradient(-10,2,0,-10,2,125);
+    heatG.addColorStop(0,'rgba(255,80,0,1)'); heatG.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=heatG; c.beginPath(); c.ellipse(-10,2,125,18,0,0,Math.PI*2); c.fill();
+    c.restore();
+
+    // ══════════════════════════════
+    // TAIL — very long, looping up
+    // ══════════════════════════════
+    c.save();
+    // Tail main body
+    c.lineWidth=20; c.lineCap='round'; c.strokeStyle='#c84400';
+    c.beginPath();
+    c.moveTo(-108,-24);
+    c.bezierCurveTo(-130,-14,-140,16,-128,40);
+    c.stroke();
+    c.lineWidth=14; c.strokeStyle='#e05800';
+    c.beginPath();
+    c.moveTo(-108,-24);
+    c.bezierCurveTo(-130,-14,-140,16,-128,40);
+    c.stroke();
+    // Black tip tuft
+    c.lineWidth=16; c.strokeStyle='#100400';
+    c.beginPath(); c.moveTo(-128,40); c.quadraticCurveTo(-120,54,-112,52); c.stroke();
+    c.fillStyle='#100400';
+    c.beginPath(); c.arc(-112,52,9,0,Math.PI*2); c.fill();
+    c.fillStyle='#1e0800';
+    c.beginPath(); c.arc(-116,46,6,0,Math.PI*2); c.fill();
+    // Tail ring stripes
+    c.strokeStyle='#0e0300'; c.lineWidth=6; c.lineCap='butt';
+    [[-112,-16,-118,-4],[-120,-4,-128,8],[-128,12,-136,24],[-128,32,-126,44]].forEach(([x1,y1,x2,y2])=>{
+      c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+    });
+    c.restore();
+
+    // ══════════════════════════════════════════════════
+    // HIND LEGS — thick, bent at hock, powerful haunches
+    // ══════════════════════════════════════════════════
+    c.save();
+    // Haunch muscle mass — large rounded dome
+    c.fillStyle='#b83800';
+    c.beginPath(); c.ellipse(-72,-26,38,34,0.2,0,Math.PI*2); c.fill();
+    c.fillStyle='#cc4400';
+    c.beginPath(); c.ellipse(-68,-24,31,28,0.15,0,Math.PI*2); c.fill();
+    c.fillStyle='rgba(220,90,0,0.3)';
+    c.beginPath(); c.ellipse(-65,-20,22,20,0.1,0,Math.PI*2); c.fill();
+
+    // Far hind leg (behind body, slightly darker)
+    c.strokeStyle='#a83200'; c.lineWidth=22; c.lineCap='round';
+    c.beginPath(); c.moveTo(-84,-10); c.quadraticCurveTo(-92,8,-82+leg*0.3,22); c.stroke();
+    // Near hind leg
+    c.strokeStyle='#c04000'; c.lineWidth=25; c.lineCap='round';
+    c.beginPath(); c.moveTo(-60,-8); c.quadraticCurveTo(-60,8,-50-leg*0.3,22); c.stroke();
+    // Hind leg stripes — wrapping
+    c.strokeStyle='#100300'; c.lineWidth=5.5; c.lineCap='round';
+    c.beginPath(); c.moveTo(-88,-6); c.quadraticCurveTo(-94,4,-88,16); c.stroke();
+    c.beginPath(); c.moveTo(-79,-8); c.quadraticCurveTo(-83,2,-78,14); c.stroke();
+    c.beginPath(); c.moveTo(-64,-4); c.quadraticCurveTo(-66,6,-62,18); c.stroke();
+    c.beginPath(); c.moveTo(-54,-6); c.quadraticCurveTo(-55,4,-52,16); c.stroke();
+    c.restore();
+
+    // ══════════════════════════════════════════════════════════
+    // FRONT LEGS — enormous, straight, pillars of muscle
+    // Placed wide apart, under the deep chest
+    // ══════════════════════════════════════════════════════════
+    c.save();
+    // Far front leg
+    c.strokeStyle='#a83200'; c.lineWidth=24; c.lineCap='round';
+    c.beginPath(); c.moveTo(22,-20); c.quadraticCurveTo(18,4,20+leg*0.4,22); c.stroke();
+    // Near front leg  
+    c.strokeStyle='#c04000'; c.lineWidth=28; c.lineCap='round';
+    c.beginPath(); c.moveTo(48,-24); c.quadraticCurveTo(50,2,54-leg*0.4,22); c.stroke();
+    // Front leg stripes — 3 per leg, wrapping
+    c.strokeStyle='#100300'; c.lineWidth=5.5; c.lineCap='round';
+    c.beginPath(); c.moveTo(16,-12); c.quadraticCurveTo(14,0,16,14); c.stroke();
+    c.beginPath(); c.moveTo(24,-16); c.quadraticCurveTo(24,0,26,14); c.stroke();
+    c.beginPath(); c.moveTo(32,-14); c.quadraticCurveTo(33,0,34,14); c.stroke();
+    c.beginPath(); c.moveTo(42,-16); c.quadraticCurveTo(42,0,44,14); c.stroke();
+    c.beginPath(); c.moveTo(52,-18); c.quadraticCurveTo(54,0,56,14); c.stroke();
+    c.beginPath(); c.moveTo(62,-14); c.quadraticCurveTo(64,2,64,14); c.stroke();
+    c.restore();
+
+    // ══════════════════════════════════════════════
+    // PAWS — huge, spread wide, retractable claws
+    // ══════════════════════════════════════════════
+    [[20+leg*0.4,24,16,9,'near-hind'],[48-leg*0.4,24,18,10,'near-front'],
+     [-82+leg*0.3,24,14,8,'far-hind'],[22,24,14,8,'far-front2']].forEach(([px,py,rw,rh])=>{
+      c.fillStyle='#882400';
+      c.beginPath(); c.ellipse(px,py,rw,rh,0,0,Math.PI*2); c.fill();
+      c.fillStyle='#aa3000';
+      c.beginPath(); c.ellipse(px,py,rw-3,rh-2.5,0,0,Math.PI*2); c.fill();
+      // 4 scimitar claws
+      c.fillStyle='#d0c8a8'; c.strokeStyle='#706850'; c.lineWidth=0.5;
+      [-rw*0.65,-rw*0.22,rw*0.22,rw*0.65].forEach(ox=>{
+        c.save(); c.translate(px+ox,py+rh-1);
+        c.rotate(ox*0.035);
+        c.beginPath();
+        c.moveTo(-1.8,0);
+        c.bezierCurveTo(-2,5,0,14,0.5,15);
+        c.bezierCurveTo(1,14,2,5,1.8,0);
+        c.closePath(); c.fill(); c.stroke();
+        c.restore();
+      });
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    // MAIN BODY — the longest, lowest, most massive part
+    // Real tiger: 2.5-3m long, incredibly barrel-chested, deep flanks
+    // White/cream belly, rich orange sides, darker spine
+    // ══════════════════════════════════════════════════════════════
+
+    // Cream belly / underside
+    c.fillStyle='#ede0b8';
+    c.beginPath();
+    c.moveTo(-105,-8);
+    c.bezierCurveTo(-70,4+breathe, 0,6+breathe, 70,-8);
+    c.bezierCurveTo(50,12+breathe, 0,16+breathe,-70,14+breathe);
+    c.bezierCurveTo(-90,12+breathe,-110,4,-105,-8);
+    c.closePath(); c.fill();
+
+    // Main body shape — enormous
+    const bG=c.createLinearGradient(-110,-70,80,10);
+    bG.addColorStop(0,  '#be3c00'); // rump
+    bG.addColorStop(0.2,'#d84e00');
+    bG.addColorStop(0.4,'#f06800'); // mid
+    bG.addColorStop(0.58,'#ee6400');// shoulder — highest point
+    bG.addColorStop(0.75,'#d85800');
+    bG.addColorStop(1,  '#c84800'); // chest
+    c.fillStyle=bG;
+    c.beginPath();
+    // Rump
+    c.moveTo(-110,-16);
+    // Spine line — rises to shoulder hump then drops to neck
+    c.bezierCurveTo(-95,-52+breathe,-50,-72+breathe,-10,-68+breathe);
+    c.bezierCurveTo(20,-64+breathe,55,-56+breathe,82,-30);
+    // Chest
+    c.quadraticCurveTo(90,-16,86, 2);
+    // Belly
+    c.bezierCurveTo(60,16+breathe,0,18+breathe,-70,14+breathe);
+    c.bezierCurveTo(-92,12,-112,4,-110,-16);
+    c.closePath(); c.fill();
+
+    // Dorsal darker ridge — spine shadow
+    c.save();
+    c.strokeStyle='rgba(80,16,0,0.28)'; c.lineWidth=18; c.lineCap='round';
+    c.beginPath();
+    c.moveTo(-100,-44+breathe);
+    c.bezierCurveTo(-65,-70+breathe,-20,-76+breathe,15,-70+breathe);
+    c.bezierCurveTo(40,-64+breathe,68,-52+breathe,80,-36);
+    c.stroke();
+    c.restore();
+
+    // Shoulder muscle highlight — tigers have a visible hump
+    c.fillStyle='rgba(255,110,0,0.22)';
+    c.beginPath(); c.ellipse(16,-52+breathe,40,22,0.1,0,Math.PI*2); c.fill();
+
+    // ══════════════════════════════════════════════════════
+    // BODY STRIPES — THE DEFINING FEATURE
+    // Flow from spine DOWN and SLIGHTLY FORWARD across flanks
+    // Wide at top, taper toward belly, irregular, some forked
+    // Colour: very dark brown-black, not pure black
+    // ══════════════════════════════════════════════════════
+    c.save();
+    c.lineCap='round';
+
+    // Each entry: [topX,topY, midX,midY, bottomX,bottomY, width, fork?]
+    const stripes=[
+      // Rump / hindquarters stripes
+      [-100,-40,  -104,-28, -108,-10,  8, false],
+      [ -88,-50,   -92,-36,  -96,-14,  7, false],
+      [ -74,-58,   -78,-42,  -82,-16,  8, false],
+      [ -60,-64,   -64,-46,  -68,-18,  7, false],
+      [ -46,-68,   -50,-50,  -54,-18,  8, false],
+      // Mid body — some forked
+      [ -32,-70,   -34,-50,  -38,-18,  7, true ],
+      [ -18,-72,   -18,-52,  -20,-18,  8, true ],
+      [  -4,-72,    -4,-52,   -6,-16,  7, false],
+      [  10,-70,    10,-50,    8,-14,  8, true ],
+      // Shoulder stripes — bolder, more vertical
+      [  24,-68,    26,-46,   24,-12,  7, false],
+      [  38,-64,    40,-42,   40,-10,  8, false],
+      [  52,-58,    56,-36,   58, -8,  7, false],
+      [  66,-50,    70,-30,   70, -6,  6, false],
+      [  78,-38,    80,-22,   78, -4,  5, false],
+    ];
+
+    stripes.forEach(([tx,ty,mx,my,bx,by,w,fork])=>{
+      const by2=by+breathe, my2=my+breathe, ty2=ty+breathe;
+      // Drop shadow for depth
+      c.lineWidth=w+2; c.strokeStyle='rgba(0,0,0,0.2)';
+      c.beginPath(); c.moveTo(tx+1,ty2+1); c.quadraticCurveTo(mx+1,my2+1,bx+1,by2+1); c.stroke();
+      // Main stripe
+      c.lineWidth=w; c.strokeStyle='#140500';
+      c.beginPath(); c.moveTo(tx,ty2); c.quadraticCurveTo(mx,my2,bx,by2); c.stroke();
+      // Fork — secondary branch going more forward
+      if(fork){
+        c.lineWidth=Math.max(3,w-3);
+        c.beginPath();
+        c.moveTo(mx,my2);
+        c.lineTo(mx-8, by2+4);
+        c.stroke();
+      }
+    });
+    c.restore();
+
+    // ══════════════════════════════
+    // NECK — thick column of muscle
+    // ══════════════════════════════
+    c.save();
+    const nG=c.createLinearGradient(65,-16,100,-90);
+    nG.addColorStop(0,'#cc4800'); nG.addColorStop(1,'#e06400');
+    c.fillStyle=nG;
+    c.beginPath();
+    c.moveTo(58,-12);
+    c.bezierCurveTo(85,-20,102,-50,98,-90);
+    c.bezierCurveTo(105,-74,108,-50,90,-22);
+    c.quadraticCurveTo(80,-16,70,-12);
+    c.closePath(); c.fill();
+    // Neck white throat
+    c.fillStyle='rgba(238,220,170,0.5)';
+    c.beginPath();
+    c.moveTo(62,-14);
+    c.bezierCurveTo(80,-22,96,-52,92,-88);
+    c.bezierCurveTo(86,-72,82,-46,72,-18);
+    c.closePath(); c.fill();
+    // Neck stripes
+    c.strokeStyle='#140500'; c.lineWidth=4.5; c.lineCap='round';
+    c.beginPath(); c.moveTo(64,-20); c.quadraticCurveTo(78,-38,90,-66); c.stroke();
+    c.beginPath(); c.moveTo(74,-16); c.quadraticCurveTo(90,-36,100,-64); c.stroke();
+    c.restore();
+
+    // ════════════════════════════════════════════════════════════
+    // HEAD — translate to head centre for clean relative coords
+    // Head centre: world (100, -82)
+    // Real tiger head: nearly spherical, enormous cheek ruffs,
+    // wide flat brow, deep-set eyes under heavy ridge
+    // ════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════
+    // HEAD — TRUE SIDE PROFILE
+    // Tiger walking left-to-right: head faces RIGHT (forward)
+    // All coords relative to head-centre translate
+    // x+ = forward (toward muzzle), x- = back (toward neck)
+    // y- = up,  y+ = down
+    // Skull spans roughly: x=-38(back) to x=+55(muzzle tip)
+    //                      y=-44(crown) to y=+30(jaw)
+    // ════════════════════════════════════════════════════════════
+    const HX=102, HY=-80;
+    c.save();
+    c.translate(HX, HY);
+
+    // ── EAR — single ear visible in side profile, sits on top-back ──
+    // Tiger ear: rounded triangle, black outer, orange inner, pink interior
+    c.fillStyle='#0c0300';
+    c.beginPath();
+    c.moveTo(-18,-36);
+    c.quadraticCurveTo(-24,-60,-8,-54);
+    c.quadraticCurveTo( 2,-48, -4,-36);
+    c.closePath(); c.fill();
+    c.fillStyle='#c04000';
+    c.beginPath();
+    c.moveTo(-16,-37);
+    c.quadraticCurveTo(-20,-56,-7,-51);
+    c.quadraticCurveTo( 1,-46,-5,-37);
+    c.closePath(); c.fill();
+    // Pink inner
+    c.fillStyle='rgba(200,120,80,0.7)';
+    c.beginPath();
+    c.moveTo(-15,-38);
+    c.quadraticCurveTo(-17,-52,-7,-49);
+    c.quadraticCurveTo(-1,-45,-5,-38);
+    c.closePath(); c.fill();
+    // White ocelli spot
+    c.fillStyle='rgba(248,238,205,0.9)';
+    c.beginPath(); c.ellipse(-14,-48,3.5,5,0.2,0,Math.PI*2); c.fill();
+
+    // ── SKULL — elongated side-profile shape ──
+    // Round cranium at back-top, tapering into long flat forehead,
+    // dropping into the broad muzzle, heavy lower jaw beneath
+    const sG=c.createLinearGradient(-36,-40,50,20);
+    sG.addColorStop(0,  '#a83000'); // back of skull — darker
+    sG.addColorStop(0.3,'#d85400');
+    sG.addColorStop(0.6,'#f07200'); // mid face — brightest
+    sG.addColorStop(1,  '#c85000'); // muzzle
+    c.fillStyle=sG;
+    c.beginPath();
+    // Start: back of jaw / under-ear
+    c.moveTo(-30, 22);
+    // Back skull curve — round cranium
+    c.quadraticCurveTo(-44, 10,-42,-10);
+    c.quadraticCurveTo(-40,-34,-22,-42);
+    // Flat-ish forehead top
+    c.quadraticCurveTo( -4,-48, 14,-44);
+    // Slope down to face and forward over brow
+    c.quadraticCurveTo( 28,-40, 34,-28);
+    // Cheekbone / front face
+    c.quadraticCurveTo( 42,-16, 44, -4);
+    // Muzzle / lower face
+    c.quadraticCurveTo( 48,  6, 44, 18);
+    // Chin / lower jaw
+    c.quadraticCurveTo( 36, 30, 18, 32);
+    c.quadraticCurveTo(  0, 34,-16, 28);
+    // Back to start
+    c.quadraticCurveTo(-28, 24,-30, 22);
+    c.closePath(); c.fill();
+
+    // ── CHEEK RUFF — big fur puff below/behind eye ──
+    c.fillStyle='rgba(236,215,160,0.55)';
+    c.beginPath(); c.ellipse(-12,12,18,22,0.08,0,Math.PI*2); c.fill();
+    // Ruff texture lines
+    c.strokeStyle='rgba(155,125,75,0.22)'; c.lineWidth=1;
+    for(let ri=0;ri<5;ri++){
+      c.beginPath(); c.moveTo(-4+ri*2,-4+ri*5); c.lineTo(-32,-2+ri*5); c.stroke();
+    }
+
+    // ── WHITE MUZZLE — large cream block, forward-pointing ──
+    c.fillStyle='#f0e4c0';
+    c.beginPath();
+    c.moveTo( 8,-10);
+    c.quadraticCurveTo(28,-12,44, -2);
+    c.quadraticCurveTo(50,  6,44, 18);
+    c.quadraticCurveTo(36, 30,18, 32);
+    c.quadraticCurveTo( 6, 28, 4, 16);
+    c.quadraticCurveTo( 4,  2, 8,-10);
+    c.closePath(); c.fill();
+    // Muzzle top shading
+    c.fillStyle='rgba(165,135,85,0.28)';
+    c.beginPath(); c.ellipse(26,-2,16,8,0.05,0,Math.PI*2); c.fill();
+
+    // ── HEAD STRIPES ──
+    c.save(); c.strokeStyle='#0e0400'; c.lineCap='round';
+    // Skull stripes — running roughly top-to-bottom, angled slightly forward
+    c.lineWidth=4;
+    c.beginPath(); c.moveTo(-28,-40); c.quadraticCurveTo(-30,-20,-28, 4); c.stroke();
+    c.lineWidth=4.5;
+    c.beginPath(); c.moveTo(-14,-46); c.quadraticCurveTo(-16,-24,-14, 2); c.stroke();
+    c.lineWidth=4;
+    c.beginPath(); c.moveTo(  0,-46); c.quadraticCurveTo( -1,-26,  0,-2); c.stroke();
+    c.lineWidth=3.5;
+    c.beginPath(); c.moveTo( 12,-44); c.quadraticCurveTo( 12,-26, 12,-4); c.stroke();
+    // Cheek stripe — curving back toward neck
+    c.lineWidth=4;
+    c.beginPath(); c.moveTo(-4,  8); c.quadraticCurveTo(-18, 14,-30, 18); c.stroke();
+    c.beginPath(); c.moveTo(-2, 18); c.quadraticCurveTo(-16, 22,-28, 24); c.stroke();
+    c.restore();
+
+    // ── BROW RIDGE — heavy overhang above eye, gives angry look ──
+    c.fillStyle='rgba(50,10,0,0.68)';
+    c.beginPath();
+    c.moveTo(-4,-28); c.quadraticCurveTo(10,-38,24,-32);
+    c.quadraticCurveTo(20,-22, 8,-22);
+    c.quadraticCurveTo(-2,-22,-4,-28);
+    c.closePath(); c.fill();
+
+    // ── EYE — SINGLE, far side, under brow, deep-set ──
+    // Positioned under the brow ridge, mid-skull height
+    const eH=18+Math.floor((t*25)%25);
+    // Eye socket shadow
+    c.fillStyle='rgba(28,5,0,0.62)';
+    c.beginPath(); c.ellipse(10,-20,13,9,-0.1,0,Math.PI*2); c.fill();
+    // Glow
+    c.shadowColor=`hsl(${eH},100%,52%)`; c.shadowBlur=22+pulse*16;
+    c.fillStyle=`hsla(${eH},100%,35%,0.4)`;
+    c.beginPath(); c.arc(10,-20,12,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    // Sclera
+    c.fillStyle='#ffcc00';
+    c.beginPath(); c.ellipse(10,-20,10,8,-0.1,0,Math.PI*2); c.fill();
+    // Iris
+    c.fillStyle=`hsl(${eH},100%,52%)`;
+    c.shadowColor=`hsl(${eH},100%,44%)`; c.shadowBlur=10+pulse*7;
+    c.beginPath(); c.arc(10,-20,8,0,Math.PI*2); c.fill();
+    c.shadowBlur=0;
+    // Vertical slit pupil
+    c.fillStyle='#040100';
+    c.beginPath(); c.ellipse(10,-20,2,7.5,-0.05,0,Math.PI*2); c.fill();
+    // Catch-light — top-left of iris
+    c.fillStyle='rgba(255,255,220,0.8)';
+    c.beginPath(); c.arc(7,-24,2.5,0,Math.PI*2); c.fill();
+    // Eyelid crease
+    c.strokeStyle='rgba(50,10,0,0.45)'; c.lineWidth=1.4;
+    c.beginPath(); c.arc(10,-20,9,0.2,Math.PI-0.2); c.stroke();
+
+    // ── NOSE BRIDGE WRINKLES — snarl texture ──
+    const wrA=0.25+0.45*jawAnim;
+    c.strokeStyle=`rgba(65,14,0,${wrA})`; c.lineWidth=1.3; c.lineCap='round';
+    c.beginPath(); c.moveTo(20,-14); c.quadraticCurveTo(22,-10,20,-6); c.stroke();
+    c.beginPath(); c.moveTo(26,-15); c.quadraticCurveTo(28,-11,26,-7); c.stroke();
+    c.beginPath(); c.moveTo(32,-12); c.quadraticCurveTo(34,-8, 32,-4); c.stroke();
+
+    // ── NOSE — at tip of muzzle, pointing RIGHT ──
+    // In side profile: nose is a squarish lump at the very front
+    c.fillStyle='#1e0500';
+    c.beginPath();
+    c.moveTo(38, -4);
+    c.quadraticCurveTo(46,-6,48,-2);
+    c.quadraticCurveTo(50, 2,46, 6);
+    c.quadraticCurveTo(40, 8,36, 4);
+    c.quadraticCurveTo(34,-2,38,-4);
+    c.closePath(); c.fill();
+    // Single visible nostril cavity
+    c.fillStyle='rgba(55,8,0,0.85)';
+    c.beginPath(); c.ellipse(44,2,3.5,2.5,0.4,0,Math.PI*2); c.fill();
+    // Nose highlight
+    c.fillStyle='rgba(255,140,40,0.16)';
+    c.beginPath(); c.ellipse(40,-2,3,2.5,0,0,Math.PI*2); c.fill();
+
+    // Philtrum line (nose to mouth)
+    c.strokeStyle='rgba(25,5,0,0.45)'; c.lineWidth=1.2;
+    c.beginPath(); c.moveTo(44,6); c.lineTo(42,14); c.stroke();
+
+    // ── WHISKER PAD — one side visible ──
+    c.fillStyle='rgba(238,222,180,0.5)';
+    c.beginPath(); c.ellipse(30,16,14,10,0.08,0,Math.PI*2); c.fill();
+    // Whisker spot dots (3 rows)
+    c.fillStyle='rgba(22,5,0,0.5)';
+    [[24,12],[24,17],[24,22]].forEach(([wx,wy])=>{
+      c.beginPath(); c.arc(wx,wy,1.8,0,Math.PI*2); c.fill();
+    });
+    // Whiskers — fanning forward from pad
+    c.strokeStyle='rgba(255,248,215,0.9)'; c.lineWidth=1; c.lineCap='round';
+    [[12,8,0],[16,12,2],[20,16,3]].forEach(([sy,dy,spread])=>{
+      c.beginPath(); c.moveTo(26,sy); c.lineTo(72,dy+spread); c.stroke();
+    });
+
+    // ═══════════════════════════════════════════════════════
+    // OPEN SNARLING MOUTH — side profile
+    // Upper lip peeled back, jaw drops down and forward
+    // ═══════════════════════════════════════════════════════
+    const jd=jawAnim*12;
+
+    // Upper lip / gum — peeled back toward snout
+    c.fillStyle='#bb1a00';
+    c.beginPath();
+    c.moveTo(10, 18);
+    c.quadraticCurveTo(24,14,40,16);
+    c.quadraticCurveTo(46,18,44,22+jd*0.4);
+    c.quadraticCurveTo(36,28+jd,20,30+jd);
+    c.quadraticCurveTo(10,28+jd, 8,22);
+    c.closePath(); c.fill();
+
+    // Mouth void — dark interior
+    c.fillStyle='#060000';
+    c.beginPath();
+    c.moveTo(12,20);
+    c.quadraticCurveTo(26,16,40,18);
+    c.quadraticCurveTo(45,20,42,24+jd*0.5);
+    c.quadraticCurveTo(34,30+jd,18,32+jd);
+    c.quadraticCurveTo(10,30+jd,10,24);
+    c.closePath(); c.fill();
+
+    // Throat depth
+    c.fillStyle='rgba(0,0,0,0.88)';
+    c.beginPath(); c.ellipse(20,28+jd,10,8,0,0,Math.PI*2); c.fill();
+
+    // Lower jaw — hinges down
+    c.fillStyle='#b03600';
+    c.beginPath();
+    c.moveTo(10,22);
+    c.quadraticCurveTo(22,20,38,22);
+    c.quadraticCurveTo(44,24,42,30+jd);
+    c.quadraticCurveTo(34,38+jd,18,38+jd);
+    c.quadraticCurveTo( 8,36+jd, 8,28);
+    c.closePath(); c.fill();
+    // White chin patch
+    c.fillStyle='rgba(240,228,188,0.6)';
+    c.beginPath(); c.ellipse(24,36+jd,10,7,0,0,Math.PI*2); c.fill();
+
+    // Tongue — visible curling inside, side view
+    c.fillStyle='#bc1426';
+    c.beginPath();
+    c.moveTo(12,22+jd*0.3);
+    c.quadraticCurveTo(24,26+jd*0.6,38,22+jd*0.3);
+    c.quadraticCurveTo(34,20,24,20);
+    c.quadraticCurveTo(16,20,12,22+jd*0.3);
+    c.closePath(); c.fill();
+    // Tongue centre groove (side-on = just edge line)
+    c.strokeStyle='rgba(136,6,22,0.55)'; c.lineWidth=1.2;
+    c.beginPath(); c.moveTo(24,20); c.lineTo(24,26+jd*0.5); c.stroke();
+
+    // ── UPPER CANINE FANG — one big one visible in side profile ──
+    // The forward upper canine, curving down out of the upper jaw
+    c.fillStyle='#ffecc8';
+    c.beginPath();
+    c.moveTo(20,17);
+    c.bezierCurveTo(18,22,16,32+jd,18,38+jd);
+    c.bezierCurveTo(21,40+jd,24,30+jd,24,20);
+    c.closePath(); c.fill();
+    // Fang inner shading
+    c.fillStyle='rgba(160,120,55,0.38)';
+    c.beginPath();
+    c.moveTo(21,18);
+    c.bezierCurveTo(19,23,17,32+jd,19,37+jd);
+    c.bezierCurveTo(20,38+jd,23,30+jd,23,20);
+    c.closePath(); c.fill();
+
+    // Small incisors visible in row
+    c.fillStyle='#f5e8c0';
+    [[28,16],[33,15],[38,15]].forEach(([ix,iy])=>{
+      c.beginPath();
+      c.moveTo(ix-2,iy); c.lineTo(ix,iy+8+jd*0.3); c.lineTo(ix+2,iy);
+      c.closePath(); c.fill();
+    });
+
+    // Lower canine (pointing up, shorter)
+    c.fillStyle='#f0e2bc';
+    c.beginPath();
+    c.moveTo(20,30+jd*0.5);
+    c.bezierCurveTo(18,25,20,18,21,17);
+    c.bezierCurveTo(23,17,24,25,23,30+jd*0.5);
+    c.closePath(); c.fill();
+
+    // ── BLOOD — dripping from canine tip ──
+    c.fillStyle='rgba(165,0,0,0.9)';
+    c.beginPath(); c.arc(18,39+jd,3,0,Math.PI*2); c.fill();
+    c.strokeStyle='rgba(138,0,0,0.78)'; c.lineWidth=1.8; c.lineCap='round';
+    c.beginPath(); c.moveTo(18,39+jd); c.bezierCurveTo(17,46+jd,16,52+jd,15,56+jd); c.stroke();
+    c.fillStyle='rgba(138,0,0,0.55)';
+    c.beginPath(); c.arc(15,57+jd,2,0,Math.PI*2); c.fill();
+
+    // ── GLOWING RUNE — forehead, single triangle ──
+    const rG=Math.floor(130+90*Math.sin(t*1.9));
+    c.strokeStyle=`rgba(255,${rG},0,${0.65+0.3*pulse})`;
+    c.lineWidth=2; c.shadowColor='rgba(255,110,0,0.95)'; c.shadowBlur=16;
+    c.beginPath(); c.moveTo(2,-42); c.lineTo(-6,-30); c.lineTo(10,-30); c.closePath(); c.stroke();
+    // Side cheek rune bar
+    c.beginPath(); c.moveTo(-12,10); c.lineTo(-22,14); c.stroke();
+    c.shadowBlur=0;
+
+    c.restore(); // end head
+
+    // ── EMBER SPARKS orbiting ──
+    c.save();
+    for(let i=0;i<14;i++){
+      const st2=t*1.0+i*0.45;
+      const er=this.w*0.46;
+      const espx=Math.cos(st2)*er;
+      const espy=-this.h*0.48+Math.sin(st2*0.6)*this.h*0.34-((t*22+i*13)%58);
+      const ea=Math.max(0,1-((t*22+i*13)%58)/58);
+      c.globalAlpha=ea*this.opacity*(0.6+0.4*Math.sin(st2*1.8));
+      const eHue=6+i*13;
+      c.fillStyle=`hsl(${eHue},100%,${50+i*2}%)`;
+      c.shadowColor=`hsl(${eHue},100%,40%)`; c.shadowBlur=14;
+      c.beginPath(); c.arc(espx,espy,2.5+Math.sin(st2)*0.8,0,Math.PI*2); c.fill();
+      c.shadowBlur=0;
+    }
+    c.restore();
+  }
+
 }
 
 // ── PARTICLES ─────────────────────────────────────────────────
@@ -4804,10 +5806,11 @@ function spawnAnimal(){
     let w=map.weights?map.weights[type]:RARITIES[cfg.rarity].weight;
     // Luck boost: increase weight of rare+ animals
     if(globalLuckLevel>0){
-      const rarIdx=['common','uncommon','rare','epic','legendary','mythic','cosmic'].indexOf(cfg.rarity);
+      const rarIdx=['common','uncommon','rare','epic','legendary','mythic','cosmic','secret'].indexOf(cfg.rarity);
       if(globalLuckLevel===8){
-        // 8×: cosmic/mythic go absolutely wild, legendary x12, epic x6, rare x3, commons nearly gone
-        if(rarIdx===6)      w=w*20;  // cosmic — floods in
+        // 8×: secret floods in at max luck, cosmic/mythic go wild
+        if(rarIdx===7)      w=w*25;  // secret — floods in at max luck
+        else if(rarIdx===6) w=w*20;  // cosmic — floods in
         else if(rarIdx===5) w=w*15;  // mythic — very common
         else if(rarIdx===4) w=w*12;  // legendary
         else if(rarIdx===3) w=w*6;   // epic
@@ -4835,9 +5838,16 @@ function spawnAnimal(){
   } else if(a.melanistic){
     addFloat(W/2,H*0.10,'◆ MELANISTIC ◆','#aa88ff');
     addFloat(W/2,H*0.18,`${rar.label.toUpperCase()} ${type.toUpperCase()} — 5× CASH!`,'#cc99ff');
+  } else if(a.piebald){
+    addFloat(W/2,H*0.10,'◈ PIEBALD ◈','#f0c878');
+    addFloat(W/2,H*0.18,`${rar.label.toUpperCase()} ${type.toUpperCase()} — 2× CASH!`,'#f5dfa0');
   } else if(a.rarity==='cosmic'){
     addFloat(W/2,H*0.10,'✦✦ COSMIC ✦✦','#00ffff');
-    addFloat(W/2,H*0.18,'MOSASAURUS APPEARS!','#80ffff');
+    addFloat(W/2,H*0.18,`${type.toUpperCase()} APPEARS!`,'#80ffff');
+  } else if(a.rarity==='secret'){
+    addFloat(W/2,H*0.06,'? ? ?','#ff6600');
+    addFloat(W/2,H*0.13,'⚠ TIGER ⚠','#ff9900');
+    addFloat(W/2,H*0.20,'— THE SECRET —','#ffcc44');
   } else if(a.rarity!=='common'){
     addFloat(W/2,H*0.15,`✦ ${rar.label.toUpperCase()} ✦ ${type.toUpperCase()}`,rar.color);
   }
@@ -4880,7 +5890,7 @@ function fire(){
         score+=pts; hits++;
         a.dying=true;
         recordKill(a.type, pts);
-        tickQuests(a.type, a.rarity, hs, a.albino||false, a.melanistic||false, pts);
+        tickQuests(a.type, a.rarity, hs, a.albino||false, a.melanistic||false, pts, a.piebald||false);
         localStorage.setItem('dh_score', score);
         pushScore();
         for(let i=0;i<12;i++) particles.push(new Particle(ax,ay,'blood'));
@@ -5017,6 +6027,8 @@ const PAYOUT_TABLE=[
 let gambBet=0, gambSpinning=false;
 // Silent pity — no UI, just quietly kicks in after bad luck
 let pityLosses=0, pityMoneyLost=0;
+let consolationSpins=0;
+let consolationTarget=5+Math.floor(Math.random()*4); // 5–8, rerolled each time
 const PITY_TIERS=[
   [20, 10000000,  '🔥','🔥','🔥', 'Fire',    8  ],
   [30, 25000000,  '7️⃣','7️⃣','7️⃣', 'Lucky 7', 10 ],
@@ -5069,10 +6081,14 @@ function setCustomBet(){
   renderGamb();
 }
 function randSym(){
-  // Build effective weights — casino luck doubles weight of every non-💀 symbol
   const luck = casinoLuckActive && Date.now() < casinoLuckExpiry;
+  // Aggressively boost 🦌 and 🎯 as consolationSpins approaches consolationTarget
+  // At target: boost = 200, making them ~10x more likely than base
+  const progress = Math.min(consolationSpins / consolationTarget, 1);
+  const boost = Math.floor(progress * progress * 200);
   const syms = SLOTS_SYMBOLS.map(s=>{
-    const w = (luck && s.sym!=='💀') ? s.weight*2 : s.weight;
+    let w = (luck && s.sym!=='💀') ? s.weight*2 : s.weight;
+    if(s.sym==='🦌' || s.sym==='🎯') w += boost;
     return {...s, w};
   });
   const total=syms.reduce((s,x)=>s+x.w,0);
@@ -5146,6 +6162,10 @@ function resolveSlots(reels, pityTier){
   // Update silent pity counters
   if(isRealWin){ pityLosses=0; pityMoneyLost=0; }
   else { pityLosses++; if(mult===0) pityMoneyLost+=gambBet; }
+  // consolationSpins always increments — only resets when the consolation fires
+  consolationSpins++;
+
+
 
   const winAmt=Math.round(gambBet*mult);
   score+=winAmt;
@@ -5260,7 +6280,7 @@ const QUEST_TEMPLATES = [
   { id:'kill_10',        icon:'🔫', title:'Sharp Shooter',      desc:'Kill {n} animals total',      type:'total', target:null,        n:10, reward:1000  },
 ];
 
-const RARITY_ORDER=['common','uncommon','rare','epic','legendary','mythic','cosmic'];
+const RARITY_ORDER=['common','uncommon','rare','epic','legendary','mythic','cosmic','secret'];
 
 function getTodayKey(){
   const d=new Date();
@@ -5791,13 +6811,17 @@ db.ref('globalSpawn').on('child_added', snap=>{
   if(gameState!=='PLAYING') return;
   const a = new Animal(cmd.type);
   if(cmd.albino){
-    a.albino=true; a.melanistic=false;
+    a.albino=true; a.melanistic=false; a.piebald=false;
     a.body='#f5f5f8'; a.limb='#d8d8e0'; a.alt='#ececf2';
     a.points=Math.round(TYPES[cmd.type].points*3);
   } else if(cmd.melanistic){
-    a.melanistic=true; a.albino=false;
+    a.melanistic=true; a.albino=false; a.piebald=false;
     a.body='#0e0e0e'; a.limb='#1a1a1a'; a.alt='#252525';
     a.points=Math.round(TYPES[cmd.type].points*5);
+  } else if(cmd.piebald){
+    a.piebald=true; a.albino=false; a.melanistic=false;
+    a.body='#e8e0d8'; a.limb='#c8b8a8'; a.alt='#f0ece8';
+    a.points=Math.round(TYPES[cmd.type].points*2);
   }
   animals.push(a);
   const rar=RARITIES[a.rarity];
@@ -5807,6 +6831,9 @@ db.ref('globalSpawn').on('child_added', snap=>{
   } else if(a.melanistic){
     addFloat(W/2,H*0.10,'◆ MELANISTIC ◆','#aa88ff');
     addFloat(W/2,H*0.18,'👑 ADMIN SPAWNED','#cc99ff');
+  } else if(a.piebald){
+    addFloat(W/2,H*0.10,'◈ PIEBALD ◈','#f0c878');
+    addFloat(W/2,H*0.18,'👑 ADMIN SPAWNED','#f5dfa0');
   } else {
     addFloat(W/2,H*0.15,`👑 ${cmd.type.toUpperCase()}`,rar.color);
   }
@@ -6054,6 +7081,7 @@ function renderAdminSpawnBtns(){
 let spawnGlobal = true;
 let spawnAlbino = false;
 let spawnMelanistic = false;
+let spawnPiebald = false;
 
 function toggleSpawnTarget(){
   spawnGlobal=!spawnGlobal;
@@ -6065,44 +7093,60 @@ function toggleSpawnTarget(){
 
 function toggleAlbino(){
   spawnAlbino=!spawnAlbino;
-  if(spawnAlbino) spawnMelanistic=false; // can't have both
+  if(spawnAlbino){ spawnMelanistic=false; spawnPiebald=false; }
   const btn=document.getElementById('albinoToggleBtn');
   btn.textContent=spawnAlbino?'✦ ALBINO: ON':'✦ ALBINO: OFF';
   btn.style.borderColor=spawnAlbino?'#cc88ff':'#888';
   btn.style.color=spawnAlbino?'#ee88ff':'#aaa';
-  // reset melanistic button
   const mbtn=document.getElementById('melanoticToggleBtn');
-  mbtn.textContent='◆ MELANISTIC: OFF';
-  mbtn.style.borderColor='#888'; mbtn.style.color='#aaa';
+  mbtn.textContent='◆ MELANISTIC: OFF'; mbtn.style.borderColor='#888'; mbtn.style.color='#aaa';
+  const pbtn=document.getElementById('piebaldToggleBtn');
+  pbtn.textContent='◈ PIEBALD: OFF'; pbtn.style.borderColor='#888'; pbtn.style.color='#aaa';
 }
 function toggleMelanistic(){
   spawnMelanistic=!spawnMelanistic;
-  if(spawnMelanistic) spawnAlbino=false; // can't have both
+  if(spawnMelanistic){ spawnAlbino=false; spawnPiebald=false; }
   const btn=document.getElementById('melanoticToggleBtn');
   btn.textContent=spawnMelanistic?'◆ MELANISTIC: ON':'◆ MELANISTIC: OFF';
   btn.style.borderColor=spawnMelanistic?'#7755cc':'#888';
   btn.style.color=spawnMelanistic?'#aa88ff':'#aaa';
-  // reset albino button
   const abtn=document.getElementById('albinoToggleBtn');
-  abtn.textContent='✦ ALBINO: OFF';
-  abtn.style.borderColor='#888'; abtn.style.color='#aaa';
+  abtn.textContent='✦ ALBINO: OFF'; abtn.style.borderColor='#888'; abtn.style.color='#aaa';
+  const pbtn=document.getElementById('piebaldToggleBtn');
+  pbtn.textContent='◈ PIEBALD: OFF'; pbtn.style.borderColor='#888'; pbtn.style.color='#aaa';
+}
+function togglePiebald(){
+  spawnPiebald=!spawnPiebald;
+  if(spawnPiebald){ spawnAlbino=false; spawnMelanistic=false; }
+  const btn=document.getElementById('piebaldToggleBtn');
+  btn.textContent=spawnPiebald?'◈ PIEBALD: ON':'◈ PIEBALD: OFF';
+  btn.style.borderColor=spawnPiebald?'#c89840':'#888';
+  btn.style.color=spawnPiebald?'#f0c878':'#aaa';
+  const abtn=document.getElementById('albinoToggleBtn');
+  abtn.textContent='✦ ALBINO: OFF'; abtn.style.borderColor='#888'; abtn.style.color='#aaa';
+  const mbtn=document.getElementById('melanoticToggleBtn');
+  mbtn.textContent='◆ MELANISTIC: OFF'; mbtn.style.borderColor='#888'; mbtn.style.color='#aaa';
 }
 
 function adminSpawn(type){
   if(gameState!=='PLAYING') return;
   if(spawnGlobal){
-    db.ref('globalSpawn').push({ type, albino: spawnAlbino, melanistic: spawnMelanistic, ts: Date.now() });
+    db.ref('globalSpawn').push({ type, albino: spawnAlbino, melanistic: spawnMelanistic, piebald: spawnPiebald, ts: Date.now() });
     addFloat(W/2,H*0.40,'👑 Spawned globally!','#60ff60');
   } else {
     const a=new Animal(type);
     if(spawnAlbino){
-      a.albino=true; a.melanistic=false;
+      a.albino=true; a.melanistic=false; a.piebald=false;
       a.body='#f5f5f8'; a.limb='#d8d8e0'; a.alt='#ececf2';
       a.points=Math.round(TYPES[type].points*3);
     } else if(spawnMelanistic){
-      a.melanistic=true; a.albino=false;
+      a.melanistic=true; a.albino=false; a.piebald=false;
       a.body='#0e0e0e'; a.limb='#1a1a1a'; a.alt='#252525';
       a.points=Math.round(TYPES[type].points*5);
+    } else if(spawnPiebald){
+      a.piebald=true; a.albino=false; a.melanistic=false;
+      a.body='#e8e0d8'; a.limb='#c8b8a8'; a.alt='#f0ece8';
+      a.points=Math.round(TYPES[type].points*2);
     }
     animals.push(a);
     const rar=RARITIES[a.rarity];
